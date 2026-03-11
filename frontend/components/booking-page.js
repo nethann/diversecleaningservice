@@ -333,7 +333,7 @@ export function BookingPage() {
 
             <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
               <div className="max-w-xl text-sm text-slate-500">
-                WondaCleans blocks overbooked slots automatically, assigns the first available cleaner, and queues the
+                Premier Cleaning Co. blocks overbooked slots automatically, assigns the first available cleaner, and queues the
                 booking confirmation for email and SMS delivery.
               </div>
               <button
