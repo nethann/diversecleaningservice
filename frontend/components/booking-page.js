@@ -155,7 +155,7 @@ export function BookingPage() {
 
     const assignedCleaner = availableTeams[0];
     const booking = {
-      id: `WC-${2400 + bookings.length + 1}`,
+      id: `DCS-${2400 + bookings.length + 1}`,
       customer: form.fullName,
       service: selectedService.name,
       serviceSlug: selectedService.slug,
@@ -387,7 +387,7 @@ export function BookingPage() {
 
             <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
               <div className="max-w-xl text-sm text-slate-500">
-                Premier Cleaning Co. blocks overbooked slots automatically, assigns the first available cleaner, and queues the
+                diversecleaningservice blocks overbooked slots automatically, assigns the first available cleaner, and queues the
                 booking confirmation for email and SMS delivery.
               </div>
               <button

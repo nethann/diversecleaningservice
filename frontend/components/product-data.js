@@ -51,7 +51,7 @@ export const testimonials = [
   {
     name: "Luis M.",
     role: "Airbnb host",
-    quote: "The dashboard makes recurring Airbnb turnovers simple. WondaCleans feels built for operators, not just homeowners."
+    quote: "The dashboard makes recurring Airbnb turnovers simple. diversecleaningservice feels built for operators, not just homeowners."
   },
   {
     name: "Priya R.",
@@ -112,7 +112,7 @@ export const team = [
 
 export const initialBookings = [
   {
-    id: "WC-2401",
+    id: "DCS-2401",
     customer: "Rachel Green",
     service: "Deep Cleaning",
     serviceSlug: "deep-cleaning",
@@ -126,7 +126,7 @@ export const initialBookings = [
     paymentStatus: "Paid in full"
   },
   {
-    id: "WC-2402",
+    id: "DCS-2402",
     customer: "Taylor Kim",
     service: "Airbnb Cleaning",
     serviceSlug: "airbnb-cleaning",
@@ -140,7 +140,7 @@ export const initialBookings = [
     paymentStatus: "Deposit paid"
   },
   {
-    id: "WC-2403",
+    id: "DCS-2403",
     customer: "Noah Perez",
     service: "Standard Cleaning",
     serviceSlug: "standard-cleaning",
@@ -154,7 +154,7 @@ export const initialBookings = [
     paymentStatus: "Pending balance"
   },
   {
-    id: "WC-2404",
+    id: "DCS-2404",
     customer: "Erin Watts",
     service: "Move-in / Move-out Cleaning",
     serviceSlug: "move-in-move-out",

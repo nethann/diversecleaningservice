@@ -24,10 +24,10 @@ export function SiteHeader() {
         <div className="flex items-center justify-between gap-4">
           <Link href="/" className="flex items-center gap-3 text-[#243128]" onClick={closeMenu}>
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#6f8a67] text-sm font-semibold text-white">
-              PC
+              DS
             </span>
             <div>
-              <div className="text-lg font-semibold leading-none">Premier Cleaning Co.</div>
+              <div className="text-lg font-semibold leading-none">diversecleaningservice</div>
               <div className="mt-1 text-[11px] font-medium uppercase tracking-[0.24em] text-[#7a8478] sm:text-xs">
                 Elevated home cleaning
               </div>

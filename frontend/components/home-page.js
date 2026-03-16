@@ -94,7 +94,7 @@ export function HomePage() {
               Your Time is Precious. Why Spend it Cleaning?
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-[#5f6c61]">
-              Premier Cleaning Co. offers beautifully maintained homes, dependable service, and a simple way to book online.
+              diversecleaningservice offers beautifully maintained homes, dependable service, and a simple way to book online.
               Choose your service, select a time, and let us handle the rest.
             </p>
             <div className="mt-8">

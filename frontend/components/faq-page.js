@@ -15,7 +15,7 @@ const faqs = [
   {
     question: "What if I am not satisfied with my cleaning?",
     answer:
-      "Your satisfaction comes first. If something is missed, we will make it right promptly so your home meets the standard you expect from Premier Cleaning Co.."
+      "Your satisfaction comes first. If something is missed, we will make it right promptly so your home meets the standard you expect from diversecleaningservice."
   },
   {
     question: "Can I get a quote and book online?",
@@ -36,7 +36,7 @@ export function FaqPage() {
             Frequently asked questions
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-[#5f6c61]">
-            Everything customers usually want to know before booking a cleaning with Premier Cleaning Co..
+            Everything customers usually want to know before booking a cleaning with diversecleaningservice.
           </p>
           <div className="mt-8">
             <Link

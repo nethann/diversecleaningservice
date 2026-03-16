@@ -1,6 +1,6 @@
-# WondaCleans
+# diversecleaningservice
 
-WondaCleans is a modern cleaning service booking platform with a customer-facing booking flow, landing page, admin scheduling tools, cleaner daily view, and an Express/PostgreSQL backend starter.
+diversecleaningservice is a modern cleaning service booking platform with a customer-facing booking flow, landing page, admin scheduling tools, cleaner daily view, and an Express/PostgreSQL backend starter.
 
 ## Stack
 
