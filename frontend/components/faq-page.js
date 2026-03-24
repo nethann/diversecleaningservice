@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
 import { SiteHeader } from "@/components/site-header";
 import { ScrollReveal } from "@/components/scroll-reveal";
 
@@ -26,6 +29,12 @@ const faqs = [
 ];
 
 export function FaqPage() {
+  const [openQuestion, setOpenQuestion] = useState(faqs[0]?.question ?? null);
+
+  function toggleQuestion(question) {
+    setOpenQuestion((current) => (current === question ? null : question));
+  }
+
   return (
     <main className="pb-24">
       <SiteHeader />
@@ -52,15 +61,50 @@ export function FaqPage() {
 
       <section className="shell py-2 lg:py-6">
         <ScrollReveal className="space-y-4" delay={80}>
-          {faqs.map((item, index) => (
-            <details key={item.question} className="rounded-[1.75rem] border border-[#e6e0d3] bg-white p-6 shadow-panel" open={index === 0}>
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-[1.3rem] font-semibold text-[#243128]">
-                <span>{item.question}</span>
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f3eee4] text-[#6f8a67]">+</span>
-              </summary>
-              <p className="mt-5 border-t border-[#ebe4d7] pt-5 text-sm leading-8 text-[#5f6c61]">{item.answer}</p>
-            </details>
-          ))}
+          {faqs.map((item) => {
+            const isOpen = openQuestion === item.question;
+
+            return (
+              <div
+                key={item.question}
+                className={`overflow-hidden rounded-[1.75rem] border bg-white shadow-panel transition-all duration-400 ease-out ${
+                  isOpen ? "border-[#dcd1bc] shadow-[0_22px_50px_rgba(36,49,40,0.12)]" : "border-[#e6e0d3]"
+                }`}
+              >
+                <button
+                  type="button"
+                  onClick={() => toggleQuestion(item.question)}
+                  aria-expanded={isOpen}
+                  className="flex w-full items-center justify-between gap-4 px-6 py-6 text-left"
+                >
+                  <span className="text-[1.3rem] font-semibold text-[#243128]">{item.question}</span>
+                  <span
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#f3eee4] text-[#6f8a67] transition-all duration-300 ${
+                      isOpen ? "rotate-45 bg-[#dfe8d9] text-[#4c6247] shadow-sm" : "rotate-0"
+                    }`}
+                  >
+                    <span className="text-2xl leading-none">+</span>
+                  </span>
+                </button>
+
+                <div
+                  className={`grid transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                    isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-70"
+                  }`}
+                >
+                  <div className="overflow-hidden">
+                    <div
+                      className={`border-t border-[#ebe4d7] px-6 pb-6 pt-5 text-sm leading-8 text-[#5f6c61] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                        isOpen ? "translate-y-0" : "-translate-y-2"
+                      }`}
+                    >
+                      {item.answer}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </ScrollReveal>
       </section>
     </main>
