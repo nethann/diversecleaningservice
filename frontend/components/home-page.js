@@ -100,11 +100,11 @@ export function HomePage() {
         <div className="grid gap-8 lg:grid-cols-[1.02fr_0.98fr] lg:items-center">
           <div className="animate-enter rounded-[2rem] bg-[#f2ece1] p-8 sm:p-10 lg:p-12">
             <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#6f8a67]">Home</p>
-            <h1 className="mt-5 max-w-3xl text-5xl font-semibold tracking-tight text-[#243128] sm:text-6xl lg:text-[4.35rem] lg:leading-[1.02]">
+            <h1 className="mt-5 max-w-3xl text-4xl font-semibold tracking-tight text-[#243128] sm:text-5xl lg:text-[4.35rem] lg:leading-[1.02]">
               Your Time is Precious. Why Spend it Cleaning?
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-[#5f6c61]">
-              diversecleaningservice offers beautifully maintained homes, dependable service, and a simple way to book online.
+              Diverse Cleaning Service offers beautifully maintained homes, dependable service, and a simple way to book online.
               Choose your service, select a time, and let us handle the rest.
             </p>
             <div className="mt-8">
@@ -146,9 +146,9 @@ export function HomePage() {
       </section>
 
       <section className="shell py-10 lg:py-14">
-        <ScrollReveal className="rounded-[2rem] bg-white px-8 py-10 shadow-panel sm:px-10">
+        <ScrollReveal className="rounded-[2rem] bg-white px-6 py-8 shadow-panel sm:px-10 sm:py-10">
           <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#6f8a67]">Why choose us</p>
-          <h2 className="mt-4 text-4xl font-semibold tracking-tight text-[#243128] sm:text-5xl">
+          <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#243128] sm:text-5xl">
             Why you&apos;ll love our cleaning services
           </h2>
           <div className="mt-8 grid gap-5 md:grid-cols-2">
@@ -169,7 +169,7 @@ export function HomePage() {
         <ScrollReveal className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start" delay={80}>
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#6f8a67]">Services</p>
-            <h2 className="mt-4 text-4xl font-semibold tracking-tight text-[#243128] sm:text-5xl">
+            <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#243128] sm:text-5xl">
               Services tailored to the way you live.
             </h2>
             <p className="mt-5 max-w-xl text-base leading-8 text-[#5f6c61]">
@@ -249,9 +249,9 @@ export function HomePage() {
       </section>
 
       <section className="shell py-10 lg:py-14">
-        <ScrollReveal className="rounded-[2rem] bg-white px-8 py-10 shadow-panel sm:px-10" delay={120}>
+        <ScrollReveal className="rounded-[2rem] bg-white px-6 py-8 shadow-panel sm:px-10 sm:py-10" delay={120}>
           <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#6f8a67]">Add-ons</p>
-          <h2 className="mt-4 text-4xl font-semibold tracking-tight text-[#243128] sm:text-5xl">Popular extras</h2>
+          <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#243128] sm:text-5xl">Popular extras</h2>
           <p className="mt-5 max-w-2xl text-base leading-8 text-[#5f6c61]">
             Add finishing touches to customize your cleaning appointment.
           </p>

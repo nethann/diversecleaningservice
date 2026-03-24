@@ -9,9 +9,9 @@ export function ServicePage({ service }) {
 
       <section className="shell py-12 lg:py-16">
         <div className="grid gap-8 lg:grid-cols-[1fr_1fr] lg:items-center">
-          <div className="rounded-[2rem] bg-[#f2ece1] p-8 sm:p-10 lg:p-12">
+          <div className="rounded-[2rem] bg-[#f2ece1] p-6 sm:p-10 lg:p-12">
             <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#6f8a67]">Services</p>
-            <h1 className="mt-5 max-w-3xl text-5xl font-semibold tracking-tight text-[#243128] sm:text-6xl lg:leading-[1.04]">
+            <h1 className="mt-5 max-w-3xl text-4xl font-semibold tracking-tight text-[#243128] sm:text-6xl lg:leading-[1.04]">
               {service.heroTitle}
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-[#5f6c61]">{service.description}</p>
@@ -36,9 +36,9 @@ export function ServicePage({ service }) {
 
       <section className="shell py-4 lg:py-8">
         <ScrollReveal className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr]" delay={90}>
-          <div className="rounded-[2rem] bg-white px-8 py-10 shadow-panel sm:px-10">
+          <div className="rounded-[2rem] bg-white px-6 py-8 shadow-panel sm:px-10 sm:py-10">
             <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#6f8a67]">Pricing guide</p>
-            <h2 className="mt-4 text-4xl font-semibold tracking-tight text-[#243128] sm:text-5xl">
+            <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#243128] sm:text-5xl">
               Estimated pricing by home size
             </h2>
             <p className="mt-5 max-w-2xl text-base leading-8 text-[#5f6c61]">{service.pricingNote}</p>
@@ -56,9 +56,9 @@ export function ServicePage({ service }) {
             </div>
           </div>
 
-          <div className="rounded-[2rem] bg-white px-8 py-10 shadow-panel sm:px-10">
+          <div className="rounded-[2rem] bg-white px-6 py-8 shadow-panel sm:px-10 sm:py-10">
             <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#6f8a67]">What&apos;s included</p>
-            <h2 className="mt-4 text-4xl font-semibold tracking-tight text-[#243128] sm:text-5xl">
+            <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#243128] sm:text-5xl">
               {service.includesHeading}
             </h2>
             <div className="mt-8 grid gap-4 md:grid-cols-2">

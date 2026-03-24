@@ -6,6 +6,7 @@ import { servicePages } from "@/components/service-data";
 
 const navItems = [
   { href: "/", label: "Home" },
+  { href: "/pricing", label: "Pricing" },
   { href: "/faqs", label: "FAQs" }
 ];
 
@@ -34,8 +35,8 @@ export function SiteHeader() {
             </div>
           </Link>
 
-          <div className="hidden items-center gap-8 sm:flex">
-            <nav className="flex items-center gap-6 text-sm font-medium text-[#5f6c61]">
+          <div className="hidden items-center gap-6 lg:flex">
+            <nav className="flex items-center gap-5 text-sm font-medium text-[#5f6c61]">
               <Link href="/" className="transition hover:text-[#4c6247]">
                 Home
               </Link>
@@ -80,7 +81,7 @@ export function SiteHeader() {
             aria-expanded={menuOpen}
             aria-label="Toggle navigation menu"
             onClick={() => setMenuOpen((current) => !current)}
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-[#e6e0d3] text-[#243128] sm:hidden"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-[#e6e0d3] text-[#243128] lg:hidden"
           >
             <span className="relative h-4 w-5">
               <span
@@ -97,7 +98,7 @@ export function SiteHeader() {
         </div>
 
         {menuOpen ? (
-          <div className="mt-4 border-t border-[#ece4d6] pt-4 sm:hidden">
+          <div className="mt-4 border-t border-[#ece4d6] pt-4 lg:hidden">
             <nav className="flex flex-col gap-2 text-sm font-medium text-[#5f6c61]">
               <Link
                 href="/"

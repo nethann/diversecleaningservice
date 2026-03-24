@@ -19,7 +19,7 @@ const faqs = [
   {
     question: "What if I am not satisfied with my cleaning?",
     answer:
-      "Your satisfaction comes first. If something is missed, we will make it right promptly so your home meets the standard you expect from diversecleaningservice."
+      "Your satisfaction comes first. If something is missed, we will make it right promptly so your home meets the standard you expect from Diverse Cleaning Service."
   },
   {
     question: "Can I get a quote and book online?",
@@ -42,11 +42,11 @@ export function FaqPage() {
       <section className="shell py-12 lg:py-16">
         <div className="rounded-[2rem] bg-[#f2ece1] p-8 sm:p-10 lg:p-12">
           <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#6f8a67]">FAQs</p>
-          <h1 className="mt-5 max-w-3xl text-5xl font-semibold tracking-tight text-[#243128] sm:text-6xl">
+          <h1 className="mt-5 max-w-3xl text-4xl font-semibold tracking-tight text-[#243128] sm:text-6xl">
             Frequently asked questions
           </h1>
           <p className="mt-6 max-w-2xl text-lg leading-8 text-[#5f6c61]">
-            Everything customers usually want to know before booking a cleaning with diversecleaningservice.
+            Everything customers usually want to know before booking a cleaning with Diverse Cleaning Service.
           </p>
           <div className="mt-8">
             <Link

@@ -242,8 +242,8 @@ export function BookingPage() {
             <Link href="/" className="text-sm font-medium text-brand-700">
               Back to home
             </Link>
-            <h1 className="mt-3 text-4xl font-semibold text-slate-950">Book a cleaning appointment</h1>
-            <p className="mt-3 max-w-2xl text-slate-600">
+            <h1 className="mt-3 text-3xl font-semibold text-slate-950 sm:text-4xl">Book a cleaning appointment</h1>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base sm:leading-8">
               Submit your service request online and use the price guide below for standard, deep, and move-in or move-out cleaning.
               If your service needs extra attention or special add-ons, we will confirm the final quote before service.
             </p>
@@ -254,7 +254,7 @@ export function BookingPage() {
         </div>
 
         <ScrollReveal className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]" delay={90}>
-          <form onSubmit={handleSubmit} className="glass rounded-[2rem] p-8 shadow-panel">
+          <form onSubmit={handleSubmit} className="glass rounded-[2rem] p-6 shadow-panel sm:p-8">
             <div className="grid gap-6 md:grid-cols-2">
               <label className="block">
                 <span className="text-sm font-medium text-slate-700">Full name</span>
@@ -461,7 +461,7 @@ export function BookingPage() {
           </form>
 
           <aside className="space-y-6">
-            <div className="glass rounded-[2rem] p-6 shadow-panel">
+            <div className="glass rounded-[2rem] p-5 shadow-panel sm:p-6">
               <h2 className="text-xl font-semibold text-slate-950">Booking summary</h2>
               <div className="mt-6 space-y-4 text-sm text-slate-600">
                 <div className="flex items-center justify-between gap-4">
@@ -499,7 +499,7 @@ export function BookingPage() {
             </div>
 
             {selectedServicePage ? (
-              <div className="glass rounded-[2rem] p-6 shadow-panel">
+              <div className="glass rounded-[2rem] p-5 shadow-panel sm:p-6">
                 <h2 className="text-xl font-semibold text-slate-950">Included with this service</h2>
                 <div className="mt-4 space-y-3 text-sm text-slate-600">
                   {selectedServicePage.includes.map((item) => (
@@ -511,7 +511,7 @@ export function BookingPage() {
               </div>
             ) : null}
 
-            <div className="glass rounded-[2rem] p-6">
+            <div className="glass rounded-[2rem] p-5 sm:p-6">
               <h2 className="text-xl font-semibold text-slate-950">Availability on {form.date}</h2>
               <div className="mt-4 space-y-3">
                 {slotSummaries.map((slot) => (

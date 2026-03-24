@@ -51,7 +51,7 @@ export const testimonials = [
   {
     name: "Luis M.",
     role: "Airbnb host",
-    quote: "The dashboard makes recurring Airbnb turnovers simple. diversecleaningservice feels built for operators, not just homeowners."
+    quote: "The dashboard makes recurring Airbnb turnovers simple. Diverse Cleaning Service feels built for operators, not just homeowners."
   },
   {
     name: "Priya R.",

@@ -33,18 +33,17 @@ export const servicePages = [
     shortName: "Recurring Cleaning",
     heroTitle: "Recurring cleaning built around your weekly, biweekly, or monthly routine.",
     description:
-      "Recurring service follows the same core scope as our standard cleaning, with flexible scheduling that helps busy households stay on top of the day-to-day mess without restarting from scratch.",
+      "Recurring service is available for homes that want ongoing maintenance on a regular schedule. Pricing is confirmed based on your home size, visit frequency, and the condition of the space.",
     image: "https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=1400&q=80",
     alt: "Clean modern kitchen with organized counters",
-    priceLabel: "$90 - $200",
-    pricingNote: "Recurring service uses the standard house cleaning price guide based on home size.",
+    priceLabel: "Request quote",
+    pricingNote: "Recurring plans are quoted directly based on visit frequency and home details.",
     pricingTiers: [
-      { size: "1 Bedroom / 1 Bath", price: "$90 - $110" },
-      { size: "2 Bedroom / 1-2 Bath", price: "$110 - $130" },
-      { size: "3 Bedroom / 2 Bath", price: "$130 - $160" },
-      { size: "4 Bedroom / 2-3 Bath", price: "$160 - $200" }
+      { size: "Weekly plans", price: "Request quote" },
+      { size: "Biweekly plans", price: "Request quote" },
+      { size: "Monthly plans", price: "Request quote" }
     ],
-    includesHeading: "Includes",
+    includesHeading: "Typical recurring service includes",
     includes: [
       "Dusting",
       "Vacuuming",

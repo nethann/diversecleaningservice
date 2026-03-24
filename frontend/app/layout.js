@@ -2,8 +2,8 @@ import "./globals.css";
 
 export const metadata = {
   title: {
-    default: "diversecleaningservice",
-    template: "%s | diversecleaningservice"
+    default: "Diverse Cleaning Service",
+    template: "%s | Diverse Cleaning Service"
   },
   description: "Modern cleaning service booking platform with scheduling, payments, staff management, and automated notifications."
 };
