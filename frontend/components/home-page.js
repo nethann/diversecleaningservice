@@ -190,6 +190,9 @@ export function HomePage() {
                 </summary>
                 <div className="mt-5 border-t border-[#ebe4d7] pt-5 text-sm leading-7 text-[#5f6c61]">
                   <p>{service.description}</p>
+                  <div className="mt-4 inline-flex rounded-full bg-[#f3eee4] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#6f8a67]">
+                    {service.priceLabel}
+                  </div>
                   <ul className="mt-4 space-y-2">
                     {service.includes.map((item) => (
                       <li key={item} className="flex items-start gap-3">

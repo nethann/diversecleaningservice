@@ -14,7 +14,10 @@ export function ServicePage({ service }) {
               {service.heroTitle}
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-[#5f6c61]">{service.description}</p>
-            <div className="mt-8">
+            <div className="mt-8 flex flex-wrap items-center gap-4">
+              <div className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-[#243128] shadow-sm">
+                Price range: {service.priceLabel}
+              </div>
               <Link
                 href="/booking"
                 className="inline-flex items-center justify-center rounded-full bg-[#6f8a67] px-8 py-4 text-sm font-semibold text-white transition hover:bg-[#4c6247]"
@@ -31,20 +34,42 @@ export function ServicePage({ service }) {
       </section>
 
       <section className="shell py-4 lg:py-8">
-        <div className="rounded-[2rem] bg-white px-8 py-10 shadow-panel sm:px-10">
-          <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#6f8a67]">What&apos;s included</p>
-          <h2 className="mt-4 text-4xl font-semibold tracking-tight text-[#243128] sm:text-5xl">
-            What to expect from {service.shortName.toLowerCase()}
-          </h2>
-          <div className="mt-8 grid gap-4 md:grid-cols-2">
-            {service.includes.map((item) => (
-              <div key={item} className="rounded-[1.75rem] border border-[#ece4d6] bg-[#fbf8f2] p-6">
-                <div className="flex items-start gap-4">
-                  <span className="mt-2 h-3 w-3 rounded-full bg-[#6f8a67]" />
-                  <p className="text-base leading-8 text-[#5f6c61]">{item}</p>
-                </div>
+        <div className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
+          <div className="rounded-[2rem] bg-white px-8 py-10 shadow-panel sm:px-10">
+            <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#6f8a67]">Pricing guide</p>
+            <h2 className="mt-4 text-4xl font-semibold tracking-tight text-[#243128] sm:text-5xl">
+              Estimated pricing by home size
+            </h2>
+            <p className="mt-5 max-w-2xl text-base leading-8 text-[#5f6c61]">{service.pricingNote}</p>
+            <div className="mt-8 overflow-hidden rounded-[1.75rem] border border-[#ece4d6] bg-[#fbf8f2]">
+              <div className="grid grid-cols-[1.3fr_0.7fr] gap-4 border-b border-[#ece4d6] px-6 py-4 text-sm font-semibold uppercase tracking-[0.18em] text-[#6f8a67]">
+                <span>Home size</span>
+                <span>Price</span>
               </div>
-            ))}
+              {service.pricingTiers.map((tier) => (
+                <div key={tier.size} className="grid grid-cols-[1.3fr_0.7fr] gap-4 border-b border-[#ece4d6] px-6 py-4 text-base text-[#243128] last:border-b-0">
+                  <span>{tier.size}</span>
+                  <span className="font-semibold">{tier.price}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-[2rem] bg-white px-8 py-10 shadow-panel sm:px-10">
+            <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#6f8a67]">What&apos;s included</p>
+            <h2 className="mt-4 text-4xl font-semibold tracking-tight text-[#243128] sm:text-5xl">
+              {service.includesHeading}
+            </h2>
+            <div className="mt-8 grid gap-4 md:grid-cols-2">
+              {service.includes.map((item) => (
+                <div key={item} className="rounded-[1.75rem] border border-[#ece4d6] bg-[#fbf8f2] p-6">
+                  <div className="flex items-start gap-4">
+                    <span className="mt-2 h-3 w-3 rounded-full bg-[#6f8a67]" />
+                    <p className="text-base leading-8 text-[#5f6c61]">{item}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>

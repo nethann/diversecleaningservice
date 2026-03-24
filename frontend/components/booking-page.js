@@ -192,8 +192,7 @@ export function BookingPage() {
             </Link>
             <h1 className="mt-3 text-4xl font-semibold text-slate-950">Book a cleaning appointment</h1>
             <p className="mt-3 max-w-2xl text-slate-600">
-              Pick a service, choose a live time slot, and confirm with a deposit or full payment. Availability updates
-              automatically from active cleaner capacity.
+              Pick a service, choose a live time slot, and confirm your request online. Pricing shown here is the starting rate and your final quote can vary by home size and condition.
             </p>
           </div>
           <div className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
@@ -428,7 +427,7 @@ export function BookingPage() {
                   <span className="font-medium text-slate-900">{suggestedCleaner ? suggestedCleaner.name : "Awaiting slot"}</span>
                 </div>
                 <div className="flex items-center justify-between gap-4">
-                  <span>Payment now</span>
+                  <span>Starting at today</span>
                   <span className="font-medium text-slate-900">
                     {formatCurrency(form.payment === "deposit" ? total * 0.3 : total)}
                   </span>
@@ -436,7 +435,8 @@ export function BookingPage() {
               </div>
               <div className="mt-6 rounded-3xl bg-slate-950 px-5 py-5 text-white">
                 <div className="text-sm text-slate-300">Estimated total</div>
-                <div className="mt-2 text-3xl font-semibold">{formatCurrency(total)}</div>
+                <div className="mt-2 text-3xl font-semibold">{selectedService.priceLabel ?? formatCurrency(total)}</div>
+                <div className="mt-2 text-xs text-slate-400">Final quote depends on home size, bath count, and selected extras.</div>
               </div>
             </div>
 

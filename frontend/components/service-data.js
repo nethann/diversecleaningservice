@@ -3,45 +3,109 @@ export const servicePages = [
     slug: "house-cleaning",
     name: "House Cleaning",
     shortName: "House Cleaning",
-    heroTitle: "House cleaning that keeps your home calm, fresh, and guest-ready.",
+    heroTitle: "Simple, dependable house cleaning for regular home maintenance.",
     description:
-      "Our house cleaning service is designed for homes that need dependable upkeep and a polished finish. We focus on kitchens, bathrooms, bedrooms, floors, and high-use living spaces so your home feels consistently cared for.",
+      "Our standard house cleaning is designed for routine upkeep. Pricing is based on your home size, and every visit focuses on the essentials that keep your home fresh, tidy, and easy to maintain.",
     image: "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?auto=format&fit=crop&w=1400&q=80",
     alt: "Bright tidy bedroom with fresh linens",
-    includes: ["Kitchen and bathroom cleaning", "Dusting and surface care", "Vacuuming and mopping", "General tidying of lived-in spaces"]
+    priceLabel: "$90 - $200",
+    pricingNote: "Regular maintenance cleaning priced by bedroom and bath count.",
+    pricingTiers: [
+      { size: "1 Bedroom / 1 Bath", price: "$90 - $110" },
+      { size: "2 Bedroom / 1-2 Bath", price: "$110 - $130" },
+      { size: "3 Bedroom / 2 Bath", price: "$130 - $160" },
+      { size: "4 Bedroom / 2-3 Bath", price: "$160 - $200" }
+    ],
+    includesHeading: "Includes",
+    includes: [
+      "Dusting",
+      "Vacuuming",
+      "Mopping floors",
+      "Bathroom cleaning",
+      "Kitchen cleaning",
+      "Trash removal",
+      "Wiping surfaces"
+    ]
   },
   {
     slug: "recurring-cleaning-service",
     name: "Recurring Cleaning Service",
     shortName: "Recurring Cleaning",
-    heroTitle: "Recurring cleaning built around your routine.",
+    heroTitle: "Recurring cleaning built around your weekly, biweekly, or monthly routine.",
     description:
-      "Choose weekly, biweekly, or monthly visits to keep your home consistently clean without the stress of starting from scratch each time. Recurring service is perfect for busy households that want a home that always feels maintained.",
+      "Recurring service follows the same core scope as our standard cleaning, with flexible scheduling that helps busy households stay on top of the day-to-day mess without restarting from scratch.",
     image: "https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=1400&q=80",
     alt: "Clean modern kitchen with organized counters",
-    includes: ["Flexible recurring schedules", "Consistent cleaning standards", "Reliable care for kitchens and baths", "Simple online rebooking"]
+    priceLabel: "$90 - $200",
+    pricingNote: "Recurring service uses the standard house cleaning price guide based on home size.",
+    pricingTiers: [
+      { size: "1 Bedroom / 1 Bath", price: "$90 - $110" },
+      { size: "2 Bedroom / 1-2 Bath", price: "$110 - $130" },
+      { size: "3 Bedroom / 2 Bath", price: "$130 - $160" },
+      { size: "4 Bedroom / 2-3 Bath", price: "$160 - $200" }
+    ],
+    includesHeading: "Includes",
+    includes: [
+      "Dusting",
+      "Vacuuming",
+      "Mopping floors",
+      "Bathroom cleaning",
+      "Kitchen cleaning",
+      "Trash removal",
+      "Wiping surfaces"
+    ]
   },
   {
     slug: "deep-cleaning-service",
     name: "Deep Cleaning Service",
     shortName: "Deep Cleaning",
-    heroTitle: "Deep cleaning for homes that need extra detail and extra care.",
+    heroTitle: "Deep cleaning for first-time visits and homes that need extra attention.",
     description:
-      "Our deep cleaning service goes beyond routine maintenance to handle buildup, neglected areas, and the details that make a home feel truly reset. It is a great fit for first-time visits, seasonal refreshes, or homes needing a more intensive clean.",
+      "Our deep cleaning service goes beyond routine maintenance and is ideal for first-time service or homes that are very dirty. It includes everything in standard cleaning plus added detail work throughout the home.",
     image: "https://images.unsplash.com/photo-1494526585095-c41746248156?auto=format&fit=crop&w=1400&q=80",
     alt: "Detailed clean bathroom with bright finishes",
-    includes: ["Extra kitchen and bathroom detail", "Baseboards and high-touch areas", "More intensive surface work", "Ideal first-time service option"]
+    priceLabel: "$150 - $400",
+    pricingNote: "Best for first-time or heavily lived-in homes.",
+    pricingTiers: [
+      { size: "1 Bedroom", price: "$150 - $180" },
+      { size: "2 Bedroom", price: "$180 - $220" },
+      { size: "3 Bedroom", price: "$220 - $300" },
+      { size: "4 Bedroom", price: "$300 - $400" }
+    ],
+    includesHeading: "Includes everything in standard cleaning plus",
+    includes: [
+      "Baseboards",
+      "Inside appliances",
+      "Window sills",
+      "Heavy bathroom scrubbing",
+      "Cabinet wipe-down"
+    ]
   },
   {
     slug: "move-in-move-out-cleaning",
     name: "Move-In/Move-Out Cleaning",
     shortName: "Move-In/Move-Out",
-    heroTitle: "Move-in and move-out cleaning for a truly fresh start.",
+    heroTitle: "Move-in and move-out cleaning for empty homes and fresh starts.",
     description:
-      "Whether you are preparing to settle in or hand over a property, our move-in and move-out cleaning service helps the space feel ready. We focus on the empty-home details that matter during transitions and turnovers.",
+      "This service is built for transitions, turnovers, and empty-home resets. We focus on the detailed areas most customers want addressed before move-in, after move-out, or ahead of inspection.",
     image: "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=1400&q=80",
     alt: "Empty clean living room ready for move in",
-    includes: ["Empty-home detailed cleaning", "Cabinets and interior wipe-downs", "Appliance exterior cleaning", "Ready-for-inspection presentation"]
+    priceLabel: "$200 - $450",
+    pricingNote: "Pricing depends on home size and the level of empty-home detail needed.",
+    pricingTiers: [
+      { size: "1-2 Bedroom", price: "$200 - $275" },
+      { size: "3 Bedroom", price: "$275 - $350" },
+      { size: "4 Bedroom", price: "$350 - $450" }
+    ],
+    includesHeading: "Includes",
+    includes: [
+      "Inside cabinets",
+      "Inside refrigerator",
+      "Inside oven",
+      "Closets",
+      "Baseboards",
+      "Deep bathroom cleaning"
+    ]
   }
 ];
 

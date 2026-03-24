@@ -2,35 +2,39 @@ export const timeSlots = ["8:00 AM", "10:00 AM", "12:30 PM", "3:00 PM", "5:30 PM
 
 export const services = [
   {
-    name: "Standard Cleaning",
+    name: "Standard House Cleaning",
     slug: "standard-cleaning",
-    price: 129,
-    duration: "3 hours",
-    description: "A recurring-ready clean for kitchens, bathrooms, bedrooms, and high-traffic surfaces.",
+    price: 90,
+    priceLabel: "$90 - $200",
+    duration: "3 to 5 hours",
+    description: "Regular maintenance cleaning for lived-in homes with pricing based on bedroom and bath count.",
     badge: "Most popular"
   },
   {
     name: "Deep Cleaning",
     slug: "deep-cleaning",
-    price: 229,
-    duration: "5 hours",
-    description: "A full reset for homes that need extra attention, detail work, and buildup removal.",
+    price: 150,
+    priceLabel: "$150 - $400",
+    duration: "4 to 7 hours",
+    description: "Best for first-time visits or very dirty homes that need extra detail work and scrubbing.",
     badge: "Best for first visits"
   },
   {
     name: "Move-in / Move-out Cleaning",
     slug: "move-in-move-out",
-    price: 279,
-    duration: "6 hours",
-    description: "Detailed turnover service for empty homes, apartments, and property handoffs.",
+    price: 200,
+    priceLabel: "$200 - $450",
+    duration: "5 to 8 hours",
+    description: "Detailed empty-home cleaning for move-ins, move-outs, and turnover prep.",
     badge: "Property reset"
   },
   {
     name: "Airbnb Cleaning",
     slug: "airbnb-cleaning",
-    price: 149,
-    duration: "2.5 hours",
-    description: "Fast guest-ready turnover with linen reset, bathroom refresh, and staging touches.",
+    price: 120,
+    priceLabel: "Custom quote",
+    duration: "2 to 4 hours",
+    description: "Fast turnover cleaning for short-term rentals, guest-ready resets, and restocking support.",
     badge: "Turnover ready"
   }
 ];
