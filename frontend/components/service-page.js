@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
+import { ScrollReveal } from "@/components/scroll-reveal";
 
 export function ServicePage({ service }) {
   return (
@@ -27,14 +28,14 @@ export function ServicePage({ service }) {
             </div>
           </div>
 
-          <div className="overflow-hidden rounded-[2rem] shadow-panel">
+          <ScrollReveal className="overflow-hidden rounded-[2rem] shadow-panel" delay={120}>
             <img src={service.image} alt={service.alt} className="h-[520px] w-full object-cover" />
-          </div>
+          </ScrollReveal>
         </div>
       </section>
 
       <section className="shell py-4 lg:py-8">
-        <div className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
+        <ScrollReveal className="grid gap-8 lg:grid-cols-[0.95fr_1.05fr]" delay={90}>
           <div className="rounded-[2rem] bg-white px-8 py-10 shadow-panel sm:px-10">
             <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#6f8a67]">Pricing guide</p>
             <h2 className="mt-4 text-4xl font-semibold tracking-tight text-[#243128] sm:text-5xl">
@@ -71,7 +72,7 @@ export function ServicePage({ service }) {
               ))}
             </div>
           </div>
-        </div>
+        </ScrollReveal>
       </section>
     </main>
   );

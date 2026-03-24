@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { SiteHeader } from "@/components/site-header";
+import { ScrollReveal } from "@/components/scroll-reveal";
 import { addons, initialBookings, services, team, timeSlots } from "@/components/product-data";
 import { servicePages } from "@/components/service-data";
 
@@ -252,7 +253,7 @@ export function BookingPage() {
           </div>
         </div>
 
-        <div className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
+        <ScrollReveal className="grid gap-8 lg:grid-cols-[1.2fr_0.8fr]" delay={90}>
           <form onSubmit={handleSubmit} className="glass rounded-[2rem] p-8 shadow-panel">
             <div className="grid gap-6 md:grid-cols-2">
               <label className="block">
@@ -524,7 +525,7 @@ export function BookingPage() {
               </div>
             </div>
           </aside>
-        </div>
+        </ScrollReveal>
       </section>
     </main>
   );

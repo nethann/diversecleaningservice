@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { SiteHeader } from "@/components/site-header";
+import { ScrollReveal } from "@/components/scroll-reveal";
 import { servicePages } from "@/components/service-data";
 
 const benefits = [
@@ -116,7 +117,7 @@ export function HomePage() {
             </div>
           </div>
 
-          <div className=" grid gap-4 sm:grid-cols-[1.05fr_0.95fr]">
+          <ScrollReveal className="grid gap-4 sm:grid-cols-[1.05fr_0.95fr]" delay={120}>
             <div className="overflow-hidden rounded-[2rem] shadow-panel">
               <img
                 src="https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=1200&q=80"
@@ -140,12 +141,12 @@ export function HomePage() {
                 />
               </div>
             </div>
-          </div>
+          </ScrollReveal>
         </div>
       </section>
 
       <section className="shell py-10 lg:py-14">
-        <div className="rounded-[2rem] bg-white px-8 py-10 shadow-panel sm:px-10">
+        <ScrollReveal className="rounded-[2rem] bg-white px-8 py-10 shadow-panel sm:px-10">
           <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#6f8a67]">Why choose us</p>
           <h2 className="mt-4 text-4xl font-semibold tracking-tight text-[#243128] sm:text-5xl">
             Why you&apos;ll love our cleaning services
@@ -161,11 +162,11 @@ export function HomePage() {
               </div>
             ))}
           </div>
-        </div>
+        </ScrollReveal>
       </section>
 
       <section id="services" className="shell py-10 lg:py-14">
-        <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
+        <ScrollReveal className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-start" delay={80}>
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#6f8a67]">Services</p>
             <h2 className="mt-4 text-4xl font-semibold tracking-tight text-[#243128] sm:text-5xl">
@@ -244,11 +245,11 @@ export function HomePage() {
               );
             })}
           </div>
-        </div>
+        </ScrollReveal>
       </section>
 
       <section className="shell py-10 lg:py-14">
-        <div className="rounded-[2rem] bg-white px-8 py-10 shadow-panel sm:px-10">
+        <ScrollReveal className="rounded-[2rem] bg-white px-8 py-10 shadow-panel sm:px-10" delay={120}>
           <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#6f8a67]">Add-ons</p>
           <h2 className="mt-4 text-4xl font-semibold tracking-tight text-[#243128] sm:text-5xl">Popular extras</h2>
           <p className="mt-5 max-w-2xl text-base leading-8 text-[#5f6c61]">
@@ -264,7 +265,7 @@ export function HomePage() {
               </div>
             ))}
           </div>
-        </div>
+        </ScrollReveal>
       </section>
     </main>
   );

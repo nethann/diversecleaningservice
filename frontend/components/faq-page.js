@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { SiteHeader } from "@/components/site-header";
+import { ScrollReveal } from "@/components/scroll-reveal";
 
 const faqs = [
   {
@@ -50,7 +51,7 @@ export function FaqPage() {
       </section>
 
       <section className="shell py-2 lg:py-6">
-        <div className="space-y-4">
+        <ScrollReveal className="space-y-4" delay={80}>
           {faqs.map((item, index) => (
             <details key={item.question} className="rounded-[1.75rem] border border-[#e6e0d3] bg-white p-6 shadow-panel" open={index === 0}>
               <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-[1.3rem] font-semibold text-[#243128]">
@@ -60,7 +61,7 @@ export function FaqPage() {
               <p className="mt-5 border-t border-[#ebe4d7] pt-5 text-sm leading-8 text-[#5f6c61]">{item.answer}</p>
             </details>
           ))}
-        </div>
+        </ScrollReveal>
       </section>
     </main>
   );
