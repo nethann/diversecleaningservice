@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
 import { SiteHeader } from "@/components/site-header";
 import { servicePages } from "@/components/service-data";
 
@@ -82,6 +85,12 @@ const addons = [
 ];
 
 export function HomePage() {
+  const [openServiceSlug, setOpenServiceSlug] = useState(servicePages[0]?.slug ?? null);
+
+  function toggleService(slug) {
+    setOpenServiceSlug((current) => (current === slug ? null : slug));
+  }
+
   return (
     <main className="pb-24">
       <SiteHeader />
@@ -107,7 +116,7 @@ export function HomePage() {
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-[1.05fr_0.95fr]">
+          <div className=" grid gap-4 sm:grid-cols-[1.05fr_0.95fr]">
             <div className="overflow-hidden rounded-[2rem] shadow-panel">
               <img
                 src="https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=1200&q=80"
@@ -176,37 +185,64 @@ export function HomePage() {
           </div>
 
           <div className="space-y-4">
-            {servicePages.map((service) => (
-              <details
-                key={service.name}
-                className="rounded-[1.75rem] border border-[#e6e0d3] bg-white p-6 shadow-panel"
-                open={service.slug === "house-cleaning"}
-              >
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-[1.35rem] font-semibold text-[#243128]">
-                  <span>{service.name}</span>
-                  <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f3eee4] text-[#6f8a67]">
-                    +
-                  </span>
-                </summary>
-                <div className="mt-5 border-t border-[#ebe4d7] pt-5 text-sm leading-7 text-[#5f6c61]">
-                  <p>{service.description}</p>
-                  <div className="mt-4 inline-flex rounded-full bg-[#f3eee4] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#6f8a67]">
-                    {service.priceLabel}
+            {servicePages.map((service) => {
+              const isOpen = openServiceSlug === service.slug;
+
+              return (
+                <div
+                  key={service.name}
+                  className={`overflow-hidden rounded-[1.75rem] border bg-white shadow-panel transition-all duration-400 ease-out ${
+                    isOpen ? "border-[#dcd1bc] shadow-[0_22px_50px_rgba(36,49,40,0.12)]" : "border-[#e6e0d3]"
+                  }`}
+                >
+                  <button
+                    type="button"
+                    onClick={() => toggleService(service.slug)}
+                    aria-expanded={isOpen}
+                    className="flex w-full items-center justify-between gap-4 px-6 py-6 text-left"
+                  >
+                    <span className="text-[1.35rem] font-semibold text-[#243128]">{service.name}</span>
+                    <span
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#f3eee4] text-[#6f8a67] transition-all duration-300 ${
+                        isOpen ? "rotate-45 bg-[#dfe8d9] text-[#4c6247] shadow-sm" : "rotate-0"
+                      }`}
+                    >
+                      <span className="text-2xl leading-none">+</span>
+                    </span>
+                  </button>
+
+                  <div
+                    className={`grid transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                      isOpen ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-70"
+                    }`}
+                  >
+                    <div className="overflow-hidden">
+                      <div
+                        className={`border-t border-[#ebe4d7] px-6 pb-6 pt-5 text-sm leading-7 text-[#5f6c61] transition-all duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                          isOpen ? "translate-y-0" : "-translate-y-2"
+                        }`}
+                      >
+                        <p>{service.description}</p>
+                        <div className="mt-4 inline-flex rounded-full bg-[#f3eee4] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#6f8a67]">
+                          {service.priceLabel}
+                        </div>
+                        <ul className="mt-4 space-y-2">
+                          {service.includes.map((item) => (
+                            <li key={item} className="flex items-start gap-3">
+                              <span className="mt-2 h-2 w-2 rounded-full bg-[#6f8a67]" />
+                              <span>{item}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        <Link href={`/services/${service.slug}`} className="mt-4 inline-flex font-semibold text-[#4c6247]">
+                          Learn more
+                        </Link>
+                      </div>
+                    </div>
                   </div>
-                  <ul className="mt-4 space-y-2">
-                    {service.includes.map((item) => (
-                      <li key={item} className="flex items-start gap-3">
-                        <span className="mt-2 h-2 w-2 rounded-full bg-[#6f8a67]" />
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Link href={`/services/${service.slug}`} className="mt-4 inline-flex font-semibold text-[#4c6247]">
-                    Learn more
-                  </Link>
                 </div>
-              </details>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>

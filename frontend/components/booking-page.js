@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SiteHeader } from "@/components/site-header";
-import { addons, formatCurrency, initialBookings, services, team, timeSlots } from "@/components/product-data";
+import { addons, initialBookings, services, team, timeSlots } from "@/components/product-data";
+import { servicePages } from "@/components/service-data";
 
-const today = "2026-03-11";
-const initialDate = "2026-03-13";
+const today = "2026-03-24";
+const initialDate = "2026-03-26";
 
 function getWeekday(date) {
   return new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(new Date(`${date}T12:00:00`));
@@ -75,6 +76,30 @@ function AddonIcon({ slug }) {
   }
 }
 
+function getPricingMatch(serviceSlug, homeSize, bathCount) {
+  switch (serviceSlug) {
+    case "standard-cleaning":
+      if (homeSize === "1-bedroom" && bathCount === "1-bath") return "$90 - $110";
+      if (homeSize === "2-bedroom" && ["1-bath", "2-bath"].includes(bathCount)) return "$110 - $130";
+      if (homeSize === "3-bedroom" && bathCount === "2-bath") return "$130 - $160";
+      if (homeSize === "4-bedroom" && ["2-bath", "3-bath"].includes(bathCount)) return "$160 - $200";
+      return null;
+    case "deep-cleaning":
+      if (homeSize === "1-bedroom") return "$150 - $180";
+      if (homeSize === "2-bedroom") return "$180 - $220";
+      if (homeSize === "3-bedroom") return "$220 - $300";
+      if (homeSize === "4-bedroom") return "$300 - $400";
+      return null;
+    case "move-in-move-out":
+      if (["1-bedroom", "2-bedroom"].includes(homeSize)) return "$200 - $275";
+      if (homeSize === "3-bedroom") return "$275 - $350";
+      if (homeSize === "4-bedroom") return "$350 - $450";
+      return null;
+    default:
+      return null;
+  }
+}
+
 export function BookingPage() {
   const [bookings, setBookings] = useState(initialBookings);
   const [form, setForm] = useState({
@@ -82,22 +107,25 @@ export function BookingPage() {
     email: "",
     phone: "",
     service: services[0].slug,
+    homeSize: "",
+    bathCount: "",
     address: "",
     date: initialDate,
     time: "",
     details: "",
     recurring: "one-time",
-    payment: "deposit",
     selectedAddons: []
   });
   const [error, setError] = useState("");
   const [submittedBooking, setSubmittedBooking] = useState(null);
 
   const selectedService = services.find((service) => service.slug === form.service) ?? services[0];
-  const addonTotal = addons
-    .filter((addon) => form.selectedAddons.includes(addon.slug))
-    .reduce((sum, addon) => sum + addon.price, 0);
-  const total = selectedService.price + addonTotal;
+  const selectedServicePage = servicePages.find((service) => {
+    if (form.service === "standard-cleaning") return service.slug === "house-cleaning";
+    if (form.service === "deep-cleaning") return service.slug === "deep-cleaning-service";
+    if (form.service === "move-in-move-out") return service.slug === "move-in-move-out-cleaning";
+    return service.slug === "recurring-cleaning-service";
+  });
 
   const slotSummaries = timeSlots.map((slot) => {
     const availableTeams = getAvailableTeams(bookings, form.date, slot);
@@ -111,6 +139,10 @@ export function BookingPage() {
   const availableSlots = slotSummaries.filter((slot) => slot.isAvailable);
   const selectedSlot = slotSummaries.find((slot) => slot.slot === form.time);
   const suggestedCleaner = selectedSlot?.availableTeams[0] ?? null;
+  const estimatedRange = useMemo(
+    () => getPricingMatch(form.service, form.homeSize, form.bathCount),
+    [form.service, form.homeSize, form.bathCount]
+  );
 
   useEffect(() => {
     if (!selectedSlot?.isAvailable) {
@@ -120,6 +152,14 @@ export function BookingPage() {
       }));
     }
   }, [availableSlots, selectedSlot]);
+
+  useEffect(() => {
+    setForm((current) => ({
+      ...current,
+      homeSize: "",
+      bathCount: current.service === "standard-cleaning" ? current.bathCount : ""
+    }));
+  }, [form.service]);
 
   function updateField(field, value) {
     setError("");
@@ -142,8 +182,18 @@ export function BookingPage() {
   function handleSubmit(event) {
     event.preventDefault();
 
-    if (!form.fullName || !form.email || !form.address || !form.date || !form.time) {
-      setError("Please complete the required booking details before confirming.");
+    if (!form.fullName || !form.email || !form.address || !form.date || !form.time || !form.service) {
+      setError("Please complete the required booking details before submitting your request.");
+      return;
+    }
+
+    if (["standard-cleaning", "deep-cleaning", "move-in-move-out"].includes(form.service) && !form.homeSize) {
+      setError("Please choose your home size so we can match your request to the price guide.");
+      return;
+    }
+
+    if (form.service === "standard-cleaning" && !form.bathCount) {
+      setError("Please choose the bath count for standard cleaning pricing.");
       return;
     }
 
@@ -164,21 +214,22 @@ export function BookingPage() {
       cleaner: assignedCleaner.name,
       cleanerId: assignedCleaner.id,
       address: form.address,
-      status: "confirmed",
-      amount: total,
-      paymentStatus: form.payment === "deposit" ? "Deposit paid" : "Paid in full"
+      status: "confirmed"
     };
 
     setBookings((current) => [...current, booking]);
     setSubmittedBooking({
       ...booking,
-      paymentDueNow: form.payment === "deposit" ? total * 0.3 : total,
+      pricing: estimatedRange ?? selectedService.priceLabel,
       notes: form.details,
       recurring: form.recurring,
       addons: addons.filter((addon) => form.selectedAddons.includes(addon.slug)).map((addon) => addon.name)
     });
     setError("");
   }
+
+  const showBathCount = form.service === "standard-cleaning";
+  const showSizePricing = ["standard-cleaning", "deep-cleaning", "move-in-move-out"].includes(form.service);
 
   return (
     <main className="pb-20">
@@ -192,11 +243,12 @@ export function BookingPage() {
             </Link>
             <h1 className="mt-3 text-4xl font-semibold text-slate-950">Book a cleaning appointment</h1>
             <p className="mt-3 max-w-2xl text-slate-600">
-              Pick a service, choose a live time slot, and confirm your request online. Pricing shown here is the starting rate and your final quote can vary by home size and condition.
+              Submit your service request online and use the price guide below for standard, deep, and move-in or move-out cleaning.
+              If your service needs extra attention or special add-ons, we will confirm the final quote before service.
             </p>
           </div>
           <div className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
-            24/7 online scheduling with automatic confirmations
+            Price ranges follow the current service sheet
           </div>
         </div>
 
@@ -247,6 +299,31 @@ export function BookingPage() {
                 </select>
               </label>
 
+              {showSizePricing ? (
+                <label className="block">
+                  <span className="text-sm font-medium text-slate-700">Home size</span>
+                  <select value={form.homeSize} onChange={(event) => updateField("homeSize", event.target.value)} className="field-input mt-2 w-full">
+                    <option value="">Select size</option>
+                    <option value="1-bedroom">1 Bedroom</option>
+                    <option value="2-bedroom">2 Bedroom</option>
+                    <option value="3-bedroom">3 Bedroom</option>
+                    <option value="4-bedroom">4 Bedroom</option>
+                  </select>
+                </label>
+              ) : null}
+
+              {showBathCount ? (
+                <label className="block">
+                  <span className="text-sm font-medium text-slate-700">Bath count</span>
+                  <select value={form.bathCount} onChange={(event) => updateField("bathCount", event.target.value)} className="field-input mt-2 w-full">
+                    <option value="">Select baths</option>
+                    <option value="1-bath">1 Bath</option>
+                    <option value="2-bath">2 Bath</option>
+                    <option value="3-bath">3 Bath</option>
+                  </select>
+                </label>
+              ) : null}
+
               <label className="block md:col-span-2">
                 <span className="text-sm font-medium text-slate-700">Address</span>
                 <input
@@ -259,7 +336,7 @@ export function BookingPage() {
               </label>
 
               <label className="block">
-                <span className="text-sm font-medium text-slate-700">Service date</span>
+                <span className="text-sm font-medium text-slate-700">Preferred date</span>
                 <input
                   type="date"
                   min={today}
@@ -321,6 +398,7 @@ export function BookingPage() {
 
             <div className="mt-8">
               <div className="text-sm font-medium text-slate-700">Add-ons</div>
+              <div className="mt-2 text-sm text-slate-500">Your sheet shows these as extra charges, so final pricing is confirmed with your quote.</div>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 {addons.map((addon) => {
                   const active = form.selectedAddons.includes(addon.slug);
@@ -340,11 +418,8 @@ export function BookingPage() {
                           <AddonIcon slug={addon.slug} />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="flex items-center justify-between gap-4">
-                            <div className="font-medium text-slate-900">{addon.name}</div>
-                            <div className="text-sm text-slate-500">{addon.turnaround}</div>
-                          </div>
-                          <div className="mt-2 text-sm text-slate-600">+{formatCurrency(addon.price)}</div>
+                          <div className="font-medium text-slate-900">{addon.name}</div>
+                          <div className="mt-2 text-sm text-slate-600">{addon.priceLabel}</div>
                         </div>
                       </div>
                     </button>
@@ -364,44 +439,22 @@ export function BookingPage() {
               />
             </label>
 
-            <div className="mt-8 flex flex-wrap gap-3">
-              {[
-                { value: "deposit", label: "Pay deposit now" },
-                { value: "full", label: "Pay in full" }
-              ].map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => updateField("payment", option.value)}
-                  className={`rounded-full px-4 py-2 text-sm font-medium ${
-                    form.payment === option.value
-                      ? "bg-slate-950 text-white"
-                      : "border border-slate-200 bg-white text-slate-700"
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-
             <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
               <div className="max-w-xl text-sm text-slate-500">
-                diversecleaningservice blocks overbooked slots automatically, assigns the first available cleaner, and queues the
-                booking confirmation for email and SMS delivery.
+                Submit your booking request and we will confirm the exact quote for services with extra charges or special scope before the visit.
               </div>
               <button
                 disabled={!availableSlots.length}
                 className="rounded-full bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-slate-300"
               >
-                Confirm booking
+                Submit request
               </button>
             </div>
 
             {error ? <div className="mt-6 rounded-3xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700">{error}</div> : null}
             {submittedBooking ? (
               <div className="mt-6 rounded-3xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-800">
-                Booking confirmed for {submittedBooking.date} at {submittedBooking.time}. {submittedBooking.cleaner} has
-                been assigned and {formatCurrency(submittedBooking.paymentDueNow)} was scheduled for payment today.
+                Booking request received for {submittedBooking.date} at {submittedBooking.time}. Estimated range: {submittedBooking.pricing}. We will confirm final scope and any extra-charge add-ons with you directly.
               </div>
             ) : null}
           </form>
@@ -419,6 +472,16 @@ export function BookingPage() {
                   <span className="font-medium text-slate-900">{selectedService.duration}</span>
                 </div>
                 <div className="flex items-center justify-between gap-4">
+                  <span>Home size</span>
+                  <span className="font-medium text-slate-900">{form.homeSize ? form.homeSize.replace("-", " ") : "Choose size"}</span>
+                </div>
+                {showBathCount ? (
+                  <div className="flex items-center justify-between gap-4">
+                    <span>Bath count</span>
+                    <span className="font-medium text-slate-900">{form.bathCount ? form.bathCount.replace("-", " ") : "Choose baths"}</span>
+                  </div>
+                ) : null}
+                <div className="flex items-center justify-between gap-4">
                   <span>Add-ons</span>
                   <span className="font-medium text-slate-900">{form.selectedAddons.length}</span>
                 </div>
@@ -426,19 +489,26 @@ export function BookingPage() {
                   <span>Cleaner preview</span>
                   <span className="font-medium text-slate-900">{suggestedCleaner ? suggestedCleaner.name : "Awaiting slot"}</span>
                 </div>
-                <div className="flex items-center justify-between gap-4">
-                  <span>Starting at today</span>
-                  <span className="font-medium text-slate-900">
-                    {formatCurrency(form.payment === "deposit" ? total * 0.3 : total)}
-                  </span>
-                </div>
               </div>
               <div className="mt-6 rounded-3xl bg-slate-950 px-5 py-5 text-white">
-                <div className="text-sm text-slate-300">Estimated total</div>
-                <div className="mt-2 text-3xl font-semibold">{selectedService.priceLabel ?? formatCurrency(total)}</div>
-                <div className="mt-2 text-xs text-slate-400">Final quote depends on home size, bath count, and selected extras.</div>
+                <div className="text-sm text-slate-300">Price guide</div>
+                <div className="mt-2 text-3xl font-semibold">{estimatedRange ?? selectedService.priceLabel}</div>
+                <div className="mt-2 text-xs text-slate-400">Add-ons are listed as extra charges and are confirmed separately.</div>
               </div>
             </div>
+
+            {selectedServicePage ? (
+              <div className="glass rounded-[2rem] p-6 shadow-panel">
+                <h2 className="text-xl font-semibold text-slate-950">Included with this service</h2>
+                <div className="mt-4 space-y-3 text-sm text-slate-600">
+                  {selectedServicePage.includes.map((item) => (
+                    <div key={item} className="rounded-2xl bg-mist px-4 py-4">
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
             <div className="glass rounded-[2rem] p-6">
               <h2 className="text-xl font-semibold text-slate-950">Availability on {form.date}</h2>
@@ -451,17 +521,6 @@ export function BookingPage() {
                     </span>
                   </div>
                 ))}
-              </div>
-            </div>
-
-            <div className="glass rounded-[2rem] p-6">
-              <h2 className="text-xl font-semibold text-slate-950">Automation preview</h2>
-              <div className="mt-4 space-y-3 text-sm text-slate-600">
-                <div className="rounded-2xl bg-mist px-4 py-4">
-                  Confirmation email after payment authorization
-                </div>
-                <div className="rounded-2xl bg-mist px-4 py-4">SMS reminder 24 hours before arrival window</div>
-                <div className="rounded-2xl bg-mist px-4 py-4">Invoice and cleaner dispatch message on service day</div>
               </div>
             </div>
           </aside>

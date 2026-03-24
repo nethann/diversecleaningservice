@@ -74,6 +74,7 @@ a {
   animation: rise 700ms ease both;
 }
 
+
 .shadow-panel {
   box-shadow: 0 18px 45px rgba(64, 56, 39, 0.08);
 }
@@ -87,5 +88,16 @@ a {
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .animate-enter {
+    animation: none !important;
   }
 }
