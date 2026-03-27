@@ -10,6 +10,9 @@ const navItems = [
   { href: "/faqs", label: "FAQs" }
 ];
 
+const bookingPhoneNumber = "(470) 293-9475";
+const bookingPhoneHref = "tel:+14702939475";
+
 export function SiteHeader() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [servicesOpen, setServicesOpen] = useState(false);
@@ -67,6 +70,13 @@ export function SiteHeader() {
                 </Link>
               ))}
             </nav>
+
+            <a
+              href={bookingPhoneHref}
+              className="text-sm font-semibold text-[#4c6247] transition hover:text-[#243128]"
+            >
+              Call {bookingPhoneNumber}
+            </a>
 
             <Link
               href="/booking"
@@ -143,6 +153,12 @@ export function SiteHeader() {
                 </Link>
               ))}
             </nav>
+            <a
+              href={bookingPhoneHref}
+              className="mt-3 flex w-full items-center justify-center rounded-full border border-[#d8cebc] px-6 py-3 text-sm font-semibold text-[#243128] transition hover:bg-[#f7f3ea] hover:text-[#4c6247]"
+            >
+              Call {bookingPhoneNumber}
+            </a>
             <Link
               href="/booking"
               onClick={closeMenu}
