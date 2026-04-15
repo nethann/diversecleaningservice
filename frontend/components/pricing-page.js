@@ -6,6 +6,7 @@ const pricingSections = [
   {
     title: "Standard House Cleaning",
     subtitle: "Regular maintenance cleaning",
+    kicker: "Routine upkeep",
     priceLabel: "$90 - $200",
     rows: [
       { size: "1 Bedroom / 1 Bath", price: "$90 - $110" },
@@ -13,11 +14,21 @@ const pricingSections = [
       { size: "3 Bedroom / 2 Bath", price: "$130 - $160" },
       { size: "4 Bedroom / 2-3 Bath", price: "$160 - $200" }
     ],
-    includes: ["Dusting", "Vacuuming", "Mopping floors", "Bathroom cleaning", "Kitchen cleaning", "Trash removal", "Wiping surfaces"]
+    includesLabel: "Includes",
+    includes: [
+      "Dusting",
+      "Vacuuming",
+      "Mopping floors",
+      "Bathroom cleaning",
+      "Kitchen cleaning",
+      "Trash removal",
+      "Wiping surfaces"
+    ]
   },
   {
     title: "Deep Cleaning",
     subtitle: "First time or very dirty homes",
+    kicker: "Extra detail",
     priceLabel: "$150 - $400",
     rows: [
       { size: "1 Bedroom", price: "$150 - $180" },
@@ -25,23 +36,67 @@ const pricingSections = [
       { size: "3 Bedroom", price: "$220 - $300" },
       { size: "4 Bedroom", price: "$300 - $400" }
     ],
-    includes: ["Baseboards", "Inside appliances", "Window sills", "Heavy bathroom scrubbing", "Cabinet wipe-down"],
-    includesLabel: "Includes everything in standard cleaning plus"
+    includesLabel: "Includes everything in standard cleaning plus",
+    includes: ["Baseboards", "Inside appliances", "Window sills", "Heavy bathroom scrubbing", "Cabinet wipe-down"]
   },
   {
     title: "Move-In / Move-Out Cleaning",
-    subtitle: "Empty-home transition cleaning",
+    subtitle: "For empty-home transitions",
+    kicker: "Fresh start",
     priceLabel: "$200 - $450",
     rows: [
       { size: "1-2 Bedroom", price: "$200 - $275" },
       { size: "3 Bedroom", price: "$275 - $350" },
       { size: "4 Bedroom", price: "$350 - $450" }
     ],
+    includesLabel: "Includes",
     includes: ["Inside cabinets", "Inside refrigerator", "Inside oven", "Closets", "Baseboards", "Deep bathroom cleaning"]
   }
 ];
 
-const extraChargeAddons = ["Oven cleaning", "Fridge cleaning", "Interior windows", "Pet hair removal"];
+const addOnRows = [
+  { service: "Inside Oven", price: "$25 - $40" },
+  { service: "Inside Refrigerator", price: "$25 - $40" },
+  { service: "Inside Cabinets", price: "$25 - $50" },
+  { service: "Interior Windows", price: "$5 per window" },
+  { service: "Laundry", price: "$20 - $30" },
+  { service: "Pet Hair Removal", price: "$25 - $50" }
+];
+
+function PriceTable({ rows, firstColumn = "Home Size" }) {
+  return (
+    <div className="overflow-hidden rounded-[1.5rem] border border-[#e8e1d3] bg-[#fcfaf5]">
+      <div className="grid grid-cols-[1.2fr_0.8fr] gap-4 border-b border-[#e8e1d3] px-5 py-4 text-xs font-semibold uppercase tracking-[0.18em] text-[#6f8a67] sm:px-6">
+        <span>{firstColumn}</span>
+        <span>Price</span>
+      </div>
+      {rows.map((row) => (
+        <div
+          key={row.size ?? row.service}
+          className="grid grid-cols-[1.2fr_0.8fr] gap-4 border-b border-[#eee7d9] px-5 py-4 text-sm text-[#374038] last:border-b-0 sm:px-6 sm:text-base"
+        >
+          <span>{row.size ?? row.service}</span>
+          <span className="font-semibold text-[#243128]">{row.price}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function IncludesGrid({ items }) {
+  return (
+    <div className="grid gap-3 sm:grid-cols-2">
+      {items.map((item) => (
+        <div key={item} className="rounded-[1.25rem] border border-[#e8e1d3] bg-[#fcfaf5] px-4 py-4">
+          <div className="flex items-start gap-3">
+            <span className="mt-2 h-2.5 w-2.5 rounded-full bg-[#6f8a67]" />
+            <span className="text-sm leading-7 text-[#374038] sm:text-[15px]">{item}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export function PricingPage() {
   return (
@@ -49,100 +104,115 @@ export function PricingPage() {
       <SiteHeader />
 
       <section className="shell py-12 lg:py-16">
-        <div className="rounded-[2rem] bg-[#f2ece1] p-6 sm:p-10 lg:p-12">
-          <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#6f8a67]">Pricing</p>
-          <h1 className="mt-5 max-w-4xl text-4xl font-semibold tracking-tight text-[#243128] sm:text-5xl lg:text-6xl">
-            Clear pricing based on your real service sheet
-          </h1>
-          <p className="mt-6 max-w-3xl text-sm leading-7 text-[#5f6c61] sm:text-lg sm:leading-8">
-            These ranges reflect the pricing details you provided for standard house cleaning, deep cleaning, and move-in or
-            move-out cleaning. Services with extra scope or add-ons are confirmed before the appointment.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-4">
-            <Link
-              href="/booking"
-              className="inline-flex items-center justify-center rounded-full bg-[#6f8a67] px-8 py-4 text-sm font-semibold text-white transition hover:bg-[#4c6247]"
-            >
-              Book Now
-            </Link>
-            <Link
-              href="/faqs"
-              className="inline-flex items-center justify-center rounded-full border border-[#d7cfbf] bg-white px-8 py-4 text-sm font-semibold text-[#243128] transition hover:bg-[#f8f3ea]"
-            >
-              View FAQs
-            </Link>
+        <ScrollReveal>
+          <div className="rounded-[2.5rem] bg-[#f2ece1] px-6 py-8 shadow-panel sm:px-10 sm:py-10 lg:px-14 lg:py-14">
+            <div className="max-w-4xl">
+              <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#6f8a67]">Pricing</p>
+              <h1 className="mt-5 text-4xl font-semibold tracking-tight text-[#243128] sm:text-5xl lg:text-6xl">
+                Straightforward pricing for a beautifully cleaned home.
+              </h1>
+              <p className="mt-6 max-w-3xl text-sm leading-7 text-[#5f6c61] sm:text-lg sm:leading-8">
+                Explore our current service pricing and add-on options. These values follow the pricing sheet you shared, presented
+                in a clearer format for customers booking online.
+              </p>
+            </div>
+
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+              <Link
+                href="/booking"
+                className="inline-flex items-center justify-center rounded-full bg-[#6f8a67] px-8 py-4 text-sm font-semibold text-white transition hover:bg-[#4c6247]"
+              >
+                Book Now
+              </Link>
+              <a
+                href="tel:+14702939475"
+                className="inline-flex items-center justify-center rounded-full border border-[#d5ccba] bg-white px-8 py-4 text-sm font-semibold text-[#243128] transition hover:bg-[#f8f3ea]"
+              >
+                Call to book (470) 293-9475
+              </a>
+            </div>
           </div>
-        </div>
+        </ScrollReveal>
       </section>
 
-      <section className="shell py-2 lg:py-6">
-        <div className="space-y-8">
+      <section className="shell py-2 lg:py-4">
+        <div className="mx-auto max-w-6xl space-y-8">
           {pricingSections.map((section, index) => (
-            <ScrollReveal key={section.title} delay={index * 70}>
-              <div className="rounded-[2rem] bg-white px-6 py-8 shadow-panel sm:px-10 sm:py-10">
-                <div className="flex flex-wrap items-start justify-between gap-4">
+            <ScrollReveal key={section.title} delay={index * 80 + 60}>
+              <div className="rounded-[2rem] border border-[#e4ddce] bg-white px-6 py-8 shadow-panel sm:px-10 sm:py-10">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                   <div>
-                    <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#6f8a67]">{section.subtitle}</p>
+                    <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#6f8a67]">{section.kicker}</p>
                     <h2 className="mt-3 text-3xl font-semibold tracking-tight text-[#243128] sm:text-4xl">{section.title}</h2>
+                    <p className="mt-3 text-sm leading-7 text-[#5f6c61] sm:text-base">{section.subtitle}</p>
                   </div>
-                  <div className="rounded-full bg-[#f3eee4] px-5 py-3 text-sm font-semibold text-[#4c6247]">{section.priceLabel}</div>
+                  <div className="inline-flex w-fit rounded-full bg-[#f3eee4] px-5 py-3 text-sm font-semibold text-[#4c6247]">
+                    {section.priceLabel}
+                  </div>
                 </div>
 
                 <div className="mt-8 grid gap-8 lg:grid-cols-[0.95fr_1.05fr]">
-                  <div className="overflow-hidden rounded-[1.75rem] border border-[#ece4d6] bg-[#fbf8f2]">
-                    <div className="grid grid-cols-[1.3fr_0.7fr] gap-4 border-b border-[#ece4d6] px-6 py-4 text-sm font-semibold uppercase tracking-[0.18em] text-[#6f8a67]">
-                      <span>Home size</span>
-                      <span>Price</span>
-                    </div>
-                    {section.rows.map((row) => (
-                      <div key={row.size} className="grid grid-cols-[1.3fr_0.7fr] gap-4 border-b border-[#ece4d6] px-6 py-4 text-base text-[#243128] last:border-b-0">
-                        <span>{row.size}</span>
-                        <span className="font-semibold">{row.price}</span>
-                      </div>
-                    ))}
-                  </div>
+                  <PriceTable rows={section.rows} />
 
                   <div>
-                    <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#6f8a67]">
-                      {section.includesLabel ?? "Includes"}
-                    </p>
-                    <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                      {section.includes.map((item) => (
-                        <div key={item} className="rounded-[1.5rem] border border-[#ece4d6] bg-[#fbf8f2] p-5">
-                          <div className="flex items-start gap-3">
-                            <span className="mt-2 h-2.5 w-2.5 rounded-full bg-[#6f8a67]" />
-                            <span className="text-sm leading-7 text-[#5f6c61] sm:text-base">{item}</span>
-                          </div>
-                        </div>
-                      ))}
+                    <p className="text-sm font-semibold uppercase tracking-[0.22em] text-[#6f8a67]">{section.includesLabel}</p>
+                    <div className="mt-4">
+                      <IncludesGrid items={section.includes} />
                     </div>
                   </div>
                 </div>
               </div>
             </ScrollReveal>
           ))}
-        </div>
-      </section>
 
-      <section className="shell py-10 lg:py-14">
-        <ScrollReveal delay={120}>
-          <div className="rounded-[2rem] bg-white px-6 py-8 shadow-panel sm:px-10 sm:py-10">
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#6f8a67]">Add-on services</p>
-            <h2 className="mt-3 text-3xl font-semibold tracking-tight text-[#243128] sm:text-4xl">Extra charges are confirmed with your quote</h2>
-            <p className="mt-5 max-w-3xl text-base leading-8 text-[#5f6c61]">
-              Your pricing sheet identifies add-ons as extra-charge services, but it does not show fixed add-on amounts. We keep
-              these as quote-based so the site only shows real confirmed information.
-            </p>
-            <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              {extraChargeAddons.map((item) => (
-                <div key={item} className="rounded-[1.5rem] border border-[#ece4d6] bg-[#fbf8f2] px-5 py-5 text-center text-base font-semibold text-[#243128]">
-                  {item}
-                  <div className="mt-2 text-sm font-medium text-[#6f8a67]">Extra charge</div>
-                </div>
-              ))}
+          <ScrollReveal delay={220}>
+            <div className="rounded-[2rem] border border-[#e4ddce] bg-white px-6 py-8 shadow-panel sm:px-10 sm:py-10">
+              <div className="max-w-3xl">
+                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#6f8a67]">Add-ons</p>
+                <h2 className="mt-3 text-3xl font-semibold tracking-tight text-[#243128] sm:text-4xl">Optional extras for a more customized clean.</h2>
+                <p className="mt-4 text-sm leading-7 text-[#5f6c61] sm:text-base sm:leading-8">
+                  Add these services to your appointment when you want extra attention in specific areas of the home.
+                </p>
+              </div>
+
+              <div className="mt-8">
+                <PriceTable rows={addOnRows} firstColumn="Service" />
+              </div>
             </div>
-          </div>
-        </ScrollReveal>
+          </ScrollReveal>
+
+          <ScrollReveal delay={280}>
+            <div className="rounded-[2rem] border border-[#e4ddce] bg-[#faf6ed] px-6 py-8 shadow-panel sm:px-10 sm:py-10">
+              <div className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#6f8a67]">Before you book</p>
+                  <h2 className="mt-3 text-3xl font-semibold tracking-tight text-[#243128] sm:text-4xl">
+                    Need help choosing the right service?
+                  </h2>
+                  <p className="mt-4 text-sm leading-7 text-[#5f6c61] sm:text-base sm:leading-8">
+                    If you are not sure whether your home needs standard cleaning, deep cleaning, or a move-in or move-out service,
+                    we can help you choose the best fit before you book.
+                  </p>
+                </div>
+
+                <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
+                  <a
+                    href="tel:+14702939475"
+                    className="inline-flex items-center justify-center rounded-full bg-[#6f8a67] px-8 py-4 text-sm font-semibold text-white transition hover:bg-[#4c6247]"
+                  >
+                    Call (470) 293-9475
+                  </a>
+                  <Link
+                    href="/booking"
+                    className="inline-flex items-center justify-center rounded-full border border-[#d5ccba] bg-white px-8 py-4 text-sm font-semibold text-[#243128] transition hover:bg-[#f8f3ea]"
+                  >
+                    Start Booking
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </ScrollReveal>
+        </div>
       </section>
     </main>
   );

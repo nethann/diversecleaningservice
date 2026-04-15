@@ -119,27 +119,10 @@ export function HomePage() {
               </Link>
               <a
                 href={bookingPhoneHref}
-                className="inline-flex items-center justify-center rounded-full border border-[#cfc4ad] bg-white px-8 py-4 text-sm font-semibold text-[#243128] transition hover:border-[#6f8a67] hover:text-[#4c6247]"
+                className="inline-flex items-center justify-center rounded-full border border-[#d7cfbf] bg-[#e8decb] px-8 py-4 text-sm font-semibold text-[#243128] transition hover:border-[#6f8a67] hover:bg-[#ddd1bb] hover:text-[#4c6247]"
               >
                 Call to book {bookingPhoneNumber}
               </a>
-            </div>
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <div className="rounded-[1.5rem] border border-[#dfd4bf] bg-white/80 p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#6f8a67]">Prefer to call?</p>
-                <p className="mt-3 text-base leading-7 text-[#5f6c61]">
-                  Speak with our team directly to book appointments, ask questions, or request help with the right cleaning service.
-                </p>
-              </div>
-              <div className="rounded-[1.5rem] border border-[#dfd4bf] bg-[#fbf8f2] p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#6f8a67]">Phone booking support</p>
-                <a href={bookingPhoneHref} className="mt-3 block text-2xl font-semibold tracking-tight text-[#243128] transition hover:text-[#4c6247]">
-                  {bookingPhoneNumber}
-                </a>
-                <p className="mt-2 text-sm leading-7 text-[#5f6c61]">
-                  Call to schedule a cleaning, make changes to an appointment, or get help choosing a service.
-                </p>
-              </div>
             </div>
           </div>
 
