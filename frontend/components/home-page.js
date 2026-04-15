@@ -11,12 +11,12 @@ const bookingPhoneHref = "tel:+14702939475";
 
 const benefits = [
   {
-    name: "English Speaking Staff",
+    name: "Professional, Respectful Service",
     description:
-      "Clear communication matters. Our team is friendly, professional, and easy to communicate with throughout the entire cleaning experience.",
+      "You should feel comfortable when someone is caring for your home. Our team shows up respectfully, handles each space with care, and works to leave your home feeling refreshed and well looked after.",
     image:
       "https://images.unsplash.com/photo-1521791136064-7986c2920216?auto=format&fit=crop&w=900&q=80",
-    alt: "Professional cleaner speaking with a client"
+    alt: "Professional cleaner providing respectful in-home service"
   },
   {
     name: "Thorough Cleaning Experience",
