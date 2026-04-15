@@ -109,11 +109,11 @@ export function PricingPage() {
             <div className="max-w-4xl">
               <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#6f8a67]">Pricing</p>
               <h1 className="mt-5 text-4xl font-semibold tracking-tight text-[#243128] sm:text-5xl lg:text-6xl">
-                Straightforward pricing for a beautifully cleaned home.
+                Residential pricing and commercial estimates in one place.
               </h1>
               <p className="mt-6 max-w-3xl text-sm leading-7 text-[#5f6c61] sm:text-lg sm:leading-8">
-                Explore our current service pricing and add-on options. These values follow the pricing sheet you shared, presented
-                in a clearer format for customers booking online.
+                If you are booking for your home, you can review our residential pricing below. If you need cleaning for a business,
+                office, or commercial property, we will schedule a technician to visit and provide an estimate.
               </p>
             </div>
 
@@ -127,16 +127,71 @@ export function PricingPage() {
               <a
                 href="tel:+14702939475"
                 className="inline-flex items-center justify-center rounded-full border border-[#d5ccba] bg-white px-8 py-4 text-sm font-semibold text-[#243128] transition hover:bg-[#f8f3ea]"
-              >
-                Call to book (470) 293-9475
-              </a>
+                >
+                  Call to book (470) 293-9475
+                </a>
+              </div>
             </div>
-          </div>
         </ScrollReveal>
       </section>
 
       <section className="shell py-2 lg:py-4">
         <div className="mx-auto max-w-6xl space-y-8">
+          <ScrollReveal delay={40}>
+            <div className="grid gap-5 lg:grid-cols-2">
+              <div className="flex h-full flex-col rounded-[2rem] border border-[#e4ddce] bg-white px-6 py-8 shadow-panel sm:px-8 sm:py-8">
+                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#6f8a67]">Option 1</p>
+                <h2 className="mt-3 text-3xl font-semibold tracking-tight text-[#243128] sm:text-4xl">Residential Cleaning</h2>
+                <p className="mt-4 text-sm leading-7 text-[#5f6c61] sm:text-base sm:leading-8">
+                  Review our current residential pricing for standard house cleaning, deep cleaning, move-in or move-out service,
+                  and optional add-ons.
+                </p>
+                <div className="mt-auto pt-6">
+                  <div className="inline-flex rounded-full bg-[#f3eee4] px-4 py-2 text-sm font-semibold text-[#4c6247]">
+                    Published residential rates below
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex h-full flex-col rounded-[2rem] border border-[#d9d0bf] bg-[#faf6ed] px-6 py-8 shadow-panel sm:px-8 sm:py-8">
+                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#6f8a67]">Option 2</p>
+                <h2 className="mt-3 text-3xl font-semibold tracking-tight text-[#243128] sm:text-4xl">Commercial Cleaning</h2>
+                <p className="mt-4 text-sm leading-7 text-[#5f6c61] sm:text-base sm:leading-8">
+                  For businesses and commercial spaces, a technician will come out, walk the property with you, and provide a
+                  custom estimate based on the scope of work.
+                </p>
+                <div className="mt-auto flex flex-col gap-3 pt-6 sm:flex-row sm:flex-wrap">
+                  <a
+                    href="tel:+14702939475"
+                    className="inline-flex items-center justify-center rounded-full bg-[#6f8a67] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#4c6247]"
+                  >
+                    Call for a commercial estimate
+                  </a>
+                  <Link
+                    href="/booking"
+                    className="inline-flex items-center justify-center rounded-full border border-[#d5ccba] bg-white px-6 py-3 text-sm font-semibold text-[#243128] transition hover:bg-[#f8f3ea]"
+                  >
+                    Request service
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </ScrollReveal>
+
+          <ScrollReveal delay={55}>
+            <div id="residential-pricing" className="rounded-[2rem] border border-[#e4ddce] bg-[#fffdf8] px-6 py-6 shadow-panel sm:px-8">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm font-semibold uppercase tracking-[0.24em] text-[#6f8a67]">Residential pricing</p>
+                  <h2 className="mt-2 text-2xl font-semibold tracking-tight text-[#243128] sm:text-3xl">Home cleaning price guide</h2>
+                </div>
+                <div className="inline-flex w-fit rounded-full bg-[#f3eee4] px-4 py-2 text-sm font-semibold text-[#4c6247]">
+                  Residential only
+                </div>
+              </div>
+            </div>
+          </ScrollReveal>
+
           {pricingSections.map((section, index) => (
             <ScrollReveal key={section.title} delay={index * 80 + 60}>
               <div className="rounded-[2rem] border border-[#e4ddce] bg-white px-6 py-8 shadow-panel sm:px-10 sm:py-10">

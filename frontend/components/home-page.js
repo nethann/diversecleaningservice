@@ -107,8 +107,8 @@ export function HomePage() {
               Your Time is Precious. Why Spend it Cleaning?
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-[#5f6c61]">
-              Diverse Cleaning Service offers beautifully maintained homes, dependable service, and a simple way to book online.
-              Choose your service, select a time, and let us handle the rest.
+              Diverse Cleaning Service provides dependable residential and commercial cleaning with a simple way to get started.
+              Book home cleaning online or contact us for a business walk-through and custom estimate.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <Link
