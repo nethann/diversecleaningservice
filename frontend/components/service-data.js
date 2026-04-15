@@ -28,30 +28,30 @@ export const servicePages = [
     ]
   },
   {
-    slug: "recurring-cleaning-service",
-    name: "Recurring Cleaning Service",
-    shortName: "Recurring Cleaning",
-    heroTitle: "Recurring cleaning built around your weekly, biweekly, or monthly routine.",
+    slug: "commercial-cleaning-service",
+    name: "Commercial Cleaning Service",
+    shortName: "Commercial Cleaning",
+    heroTitle: "Commercial cleaning supported by an on-site walk-through and custom estimate.",
     description:
-      "Recurring service is available for homes that want ongoing maintenance on a regular schedule. Pricing is confirmed based on your home size, visit frequency, and the condition of the space.",
+      "Our commercial cleaning service is built for offices, storefronts, shared workspaces, and other business environments. A technician will visit your property, walk the space with you, and provide a custom estimate based on your cleaning needs and schedule.",
     image: "https://images.unsplash.com/photo-1484154218962-a197022b5858?auto=format&fit=crop&w=1400&q=80",
-    alt: "Clean modern kitchen with organized counters",
-    priceLabel: "Request quote",
-    pricingNote: "Recurring plans are quoted directly based on visit frequency and home details.",
+    alt: "Clean commercial interior prepared for staff and guests",
+    priceLabel: "On-site estimate",
+    pricingNote: "Commercial cleaning is quoted after a technician visits and reviews the property and service scope.",
     pricingTiers: [
-      { size: "Weekly plans", price: "Request quote" },
-      { size: "Biweekly plans", price: "Request quote" },
-      { size: "Monthly plans", price: "Request quote" }
+      { size: "Office suites", price: "Estimate after walk-through" },
+      { size: "Retail spaces", price: "Estimate after walk-through" },
+      { size: "Shared workspaces", price: "Estimate after walk-through" },
+      { size: "Larger facilities", price: "Estimate after walk-through" }
     ],
-    includesHeading: "Typical recurring service includes",
+    includesHeading: "Commercial service can include",
     includes: [
-      "Dusting",
-      "Vacuuming",
-      "Mopping floors",
-      "Bathroom cleaning",
-      "Kitchen cleaning",
+      "Lobby and entry cleaning",
+      "Restroom cleaning",
+      "Breakroom and shared kitchen cleaning",
       "Trash removal",
-      "Wiping surfaces"
+      "Floor care",
+      "High-touch surface wiping"
     ]
   },
   {

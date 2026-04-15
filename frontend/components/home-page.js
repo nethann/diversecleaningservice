@@ -46,7 +46,8 @@ const benefits = [
 
 const addons = [
   {
-    name: "Oven Cleaning",
+    name: "Inside Oven",
+    priceLabel: "$25 - $40",
     icon: (
       <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.6">
         <rect x="4" y="5" width="16" height="14" rx="2" />
@@ -56,7 +57,8 @@ const addons = [
     )
   },
   {
-    name: "Fridge Cleaning",
+    name: "Inside Refrigerator",
+    priceLabel: "$25 - $40",
     icon: (
       <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.6">
         <rect x="7" y="3.5" width="10" height="17" rx="2" />
@@ -68,6 +70,7 @@ const addons = [
   },
   {
     name: "Interior Windows",
+    priceLabel: "$5 per window",
     icon: (
       <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.6">
         <rect x="4" y="4" width="16" height="16" rx="2" />
@@ -78,11 +81,37 @@ const addons = [
   },
   {
     name: "Pet Hair Removal",
+    priceLabel: "$25 - $50",
     icon: (
       <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.6">
         <path d="M12 19c3.2 0 5.5-1.7 5.5-4 0-1.7-1.2-2.8-3-3.3-.8-.2-1.6-.2-2.5-.2s-1.7 0-2.5.2c-1.8.5-3 1.6-3 3.3 0 2.3 2.3 4 5.5 4z" />
         <path d="M8 9.5c.9 0 1.5-.9 1.5-2s-.6-2-1.5-2-1.5.9-1.5 2 .6 2 1.5 2z" />
         <path d="M16 9.5c.9 0 1.5-.9 1.5-2s-.6-2-1.5-2-1.5.9-1.5 2 .6 2 1.5 2z" />
+      </svg>
+    )
+  }
+  ,
+  {
+    name: "Inside Cabinets",
+    priceLabel: "$25 - $50",
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.6">
+        <rect x="4" y="6" width="16" height="12" rx="2" />
+        <path d="M12 6v12" />
+        <path d="M10 12h.01" />
+        <path d="M14 12h.01" />
+      </svg>
+    )
+  },
+  {
+    name: "Laundry",
+    priceLabel: "$20 - $30",
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.6">
+        <rect x="5" y="4" width="14" height="16" rx="2" />
+        <circle cx="12" cy="13" r="3.5" />
+        <path d="M8 8h.01" />
+        <path d="M11 8h.01" />
       </svg>
     )
   }
@@ -103,30 +132,59 @@ export function HomePage() {
         <div className="grid gap-8 lg:grid-cols-[1.02fr_0.98fr] lg:items-center">
           <div className="animate-enter rounded-[2rem] bg-[#f2ece1] p-8 sm:p-10 lg:p-12">
             <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#6f8a67]">Home</p>
+            <div className="mt-5 flex flex-wrap gap-3">
+              <span className="inline-flex items-center rounded-full bg-[#e7ddca] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#4c6247]">
+                Residential
+              </span>
+              <span className="inline-flex items-center rounded-full bg-[#e7ddca] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[#4c6247]">
+                Commercial
+              </span>
+            </div>
             <h1 className="mt-5 max-w-3xl text-4xl font-semibold tracking-tight text-[#243128] sm:text-5xl lg:text-[4.35rem] lg:leading-[1.02]">
-              Your Time is Precious. Why Spend it Cleaning?
+              Residential and commercial cleaning made simple.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-[#5f6c61]">
-              Diverse Cleaning Service provides dependable residential and commercial cleaning with a simple way to get started.
-              Book home cleaning online or contact us for a business walk-through and custom estimate.
+              Dependable cleaning for homes and businesses. Book residential service online, or call us for residential or
+              commercial booking support.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
               <Link
                 href="/booking"
                 className="inline-flex items-center justify-center rounded-full bg-[#6f8a67] px-8 py-4 text-sm font-semibold text-white transition hover:bg-[#4c6247]"
               >
-                Book Now
+                Book Residential Cleaning
               </Link>
               <a
                 href={bookingPhoneHref}
                 className="inline-flex items-center justify-center rounded-full border border-[#d7cfbf] bg-[#e8decb] px-8 py-4 text-sm font-semibold text-[#243128] transition hover:border-[#6f8a67] hover:bg-[#ddd1bb] hover:text-[#4c6247]"
               >
-                Call to book {bookingPhoneNumber}
+                Call for Residential or Commercial Booking {bookingPhoneNumber}
               </a>
             </div>
           </div>
 
           <ScrollReveal className="grid gap-4 sm:grid-cols-[1.05fr_0.95fr]" delay={120}>
+            <div className="sm:col-span-2 rounded-[2rem] border border-[#e6dece] bg-white/90 p-5 shadow-panel">
+              <div className="grid gap-4 sm:grid-cols-3 sm:items-center">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#6f8a67]">How to book</p>
+                  <p className="mt-2 text-lg font-semibold text-[#243128]">Two easy ways to get started</p>
+                </div>
+                <div className="flex h-full rounded-[1.25rem] bg-[#f7f3ea] px-4 py-4">
+                  <div className="flex min-h-[140px] w-full flex-col justify-center">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6f8a67]">Homes</p>
+                    <p className="mt-2 text-sm leading-6 text-[#5f6c61]">Book online for residential cleaning in just a few steps.</p>
+                  </div>
+                </div>
+                <div className="flex h-full rounded-[1.25rem] bg-[#f7f3ea] px-4 py-4">
+                  <div className="flex min-h-[140px] w-full flex-col justify-center">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6f8a67]">Businesses</p>
+                    <p className="mt-2 text-sm leading-6 text-[#5f6c61]">Call for commercial booking and a technician walk-through.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div className="overflow-hidden rounded-[2rem] shadow-panel">
               <img
                 src="https://images.unsplash.com/photo-1581578731548-c64695cc6952?auto=format&fit=crop&w=1200&q=80"
@@ -264,13 +322,14 @@ export function HomePage() {
           <p className="mt-5 max-w-2xl text-base leading-8 text-[#5f6c61]">
             Add finishing touches to customize your cleaning appointment.
           </p>
-          <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {addons.map((addon) => (
               <div key={addon.name} className="rounded-[1.75rem] border border-[#ece4d6] bg-[#fbf8f2] p-6 text-center">
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white text-[#6f8a67] shadow-sm">
                   {addon.icon}
                 </div>
                 <h3 className="mt-4 text-lg font-semibold text-[#243128]">{addon.name}</h3>
+                <p className="mt-2 text-sm font-medium text-[#6f8a67]">{addon.priceLabel}</p>
               </div>
             ))}
           </div>

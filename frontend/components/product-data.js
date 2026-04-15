@@ -26,20 +26,22 @@ export const services = [
     badge: "Property reset"
   },
   {
-    name: "Airbnb Cleaning",
-    slug: "airbnb-cleaning",
-    priceLabel: "Request quote",
-    duration: "Varies by turnover scope",
-    description: "Short-term rental turnovers are quoted based on layout, turnover needs, and visit frequency.",
-    badge: "Custom quote"
+    name: "Commercial Cleaning",
+    slug: "commercial-cleaning",
+    priceLabel: "On-site estimate",
+    duration: "Scheduled after walk-through",
+    description: "Commercial spaces are priced after a technician visits and reviews the scope of work.",
+    badge: "Technician visit"
   }
 ];
 
 export const addons = [
-  { name: "Oven cleaning", slug: "oven-cleaning", priceLabel: "Extra charge" },
-  { name: "Fridge cleaning", slug: "fridge-cleaning", priceLabel: "Extra charge" },
-  { name: "Interior windows", slug: "interior-windows", priceLabel: "Extra charge" },
-  { name: "Pet hair removal", slug: "pet-hair-removal", priceLabel: "Extra charge" }
+  { name: "Inside Oven", slug: "oven-cleaning", priceLabel: "$25 - $40" },
+  { name: "Inside Refrigerator", slug: "fridge-cleaning", priceLabel: "$25 - $40" },
+  { name: "Inside Cabinets", slug: "inside-cabinets", priceLabel: "$25 - $50" },
+  { name: "Interior Windows", slug: "interior-windows", priceLabel: "$5 per window" },
+  { name: "Laundry", slug: "laundry", priceLabel: "$20 - $30" },
+  { name: "Pet Hair Removal", slug: "pet-hair-removal", priceLabel: "$25 - $50" }
 ];
 
 export const testimonials = [

@@ -3,6 +3,8 @@ import { SiteHeader } from "@/components/site-header";
 import { ScrollReveal } from "@/components/scroll-reveal";
 
 export function ServicePage({ service }) {
+  const isEstimateService = service.priceLabel.toLowerCase().includes("estimate");
+
   return (
     <main className="pb-24">
       <SiteHeader />
@@ -17,14 +19,23 @@ export function ServicePage({ service }) {
             <p className="mt-6 max-w-2xl text-lg leading-8 text-[#5f6c61]">{service.description}</p>
             <div className="mt-8 flex flex-wrap items-center gap-4">
               <div className="rounded-full bg-white px-5 py-3 text-sm font-semibold text-[#243128] shadow-sm">
-                Price range: {service.priceLabel}
+                {isEstimateService ? `Pricing: ${service.priceLabel}` : `Price range: ${service.priceLabel}`}
               </div>
-              <Link
-                href="/booking"
-                className="inline-flex items-center justify-center rounded-full bg-[#6f8a67] px-8 py-4 text-sm font-semibold text-white transition hover:bg-[#4c6247]"
-              >
-                Book Now
-              </Link>
+              {isEstimateService ? (
+                <a
+                  href="tel:+14702939475"
+                  className="inline-flex items-center justify-center rounded-full bg-[#6f8a67] px-8 py-4 text-sm font-semibold text-white transition hover:bg-[#4c6247]"
+                >
+                  Call for an estimate
+                </a>
+              ) : (
+                <Link
+                  href="/booking"
+                  className="inline-flex items-center justify-center rounded-full bg-[#6f8a67] px-8 py-4 text-sm font-semibold text-white transition hover:bg-[#4c6247]"
+                >
+                  Book Now
+                </Link>
+              )}
             </div>
           </div>
 
@@ -39,13 +50,13 @@ export function ServicePage({ service }) {
           <div className="rounded-[2rem] bg-white px-6 py-8 shadow-panel sm:px-10 sm:py-10">
             <p className="text-sm font-semibold uppercase tracking-[0.28em] text-[#6f8a67]">Pricing guide</p>
             <h2 className="mt-4 text-3xl font-semibold tracking-tight text-[#243128] sm:text-5xl">
-              Estimated pricing by home size
+              {isEstimateService ? "How commercial estimates work" : "Estimated pricing by home size"}
             </h2>
             <p className="mt-5 max-w-2xl text-base leading-8 text-[#5f6c61]">{service.pricingNote}</p>
             <div className="mt-8 overflow-hidden rounded-[1.75rem] border border-[#ece4d6] bg-[#fbf8f2]">
               <div className="grid grid-cols-[1.3fr_0.7fr] gap-4 border-b border-[#ece4d6] px-6 py-4 text-sm font-semibold uppercase tracking-[0.18em] text-[#6f8a67]">
-                <span>Home size</span>
-                <span>Price</span>
+                <span>{isEstimateService ? "Property type" : "Home size"}</span>
+                <span>{isEstimateService ? "Estimate" : "Price"}</span>
               </div>
               {service.pricingTiers.map((tier) => (
                 <div key={tier.size} className="grid grid-cols-[1.3fr_0.7fr] gap-4 border-b border-[#ece4d6] px-6 py-4 text-base text-[#243128] last:border-b-0">

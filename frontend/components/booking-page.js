@@ -96,6 +96,8 @@ function getPricingMatch(serviceSlug, homeSize, bathCount) {
       if (homeSize === "3-bedroom") return "$275 - $350";
       if (homeSize === "4-bedroom") return "$350 - $450";
       return null;
+    case "commercial-cleaning":
+      return "On-site estimate";
     default:
       return null;
   }
@@ -125,7 +127,7 @@ export function BookingPage() {
     if (form.service === "standard-cleaning") return service.slug === "house-cleaning";
     if (form.service === "deep-cleaning") return service.slug === "deep-cleaning-service";
     if (form.service === "move-in-move-out") return service.slug === "move-in-move-out-cleaning";
-    return service.slug === "recurring-cleaning-service";
+    return service.slug === "commercial-cleaning-service";
   });
 
   const slotSummaries = timeSlots.map((slot) => {
@@ -231,6 +233,7 @@ export function BookingPage() {
 
   const showBathCount = form.service === "standard-cleaning";
   const showSizePricing = ["standard-cleaning", "deep-cleaning", "move-in-move-out"].includes(form.service);
+  const isCommercialService = form.service === "commercial-cleaning";
 
   return (
     <main className="pb-20">
@@ -246,6 +249,7 @@ export function BookingPage() {
             <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600 sm:text-base sm:leading-8">
               Submit your service request online and use the price guide below for standard, deep, and move-in or move-out cleaning.
               If your service needs extra attention or special add-ons, we will confirm the final quote before service.
+              Commercial cleaning requests are scheduled after a technician walk-through.
             </p>
           </div>
           <div className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-700">
@@ -399,7 +403,7 @@ export function BookingPage() {
 
             <div className="mt-8">
               <div className="text-sm font-medium text-slate-700">Add-ons</div>
-              <div className="mt-2 text-sm text-slate-500">Your sheet shows these as extra charges, so final pricing is confirmed with your quote.</div>
+              <div className="mt-2 text-sm text-slate-500">Add-ons follow the same published prices shown on the pricing page.</div>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 {addons.map((addon) => {
                   const active = form.selectedAddons.includes(addon.slug);
@@ -442,7 +446,8 @@ export function BookingPage() {
 
             <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
               <div className="max-w-xl text-sm text-slate-500">
-                Submit your booking request and we will confirm the exact quote for services with extra charges or special scope before the visit.
+                Submit your booking request and we will confirm any add-ons or service details before the visit. Commercial cleaning
+                requests are finalized after a technician visit.
               </div>
               <button
                 disabled={!availableSlots.length}
@@ -494,7 +499,11 @@ export function BookingPage() {
               <div className="mt-6 rounded-3xl bg-slate-950 px-5 py-5 text-white">
                 <div className="text-sm text-slate-300">Price guide</div>
                 <div className="mt-2 text-3xl font-semibold">{estimatedRange ?? selectedService.priceLabel}</div>
-                <div className="mt-2 text-xs text-slate-400">Add-ons are listed as extra charges and are confirmed separately.</div>
+                <div className="mt-2 text-xs text-slate-400">
+                  {isCommercialService
+                    ? "Commercial pricing is provided after a technician walk-through."
+                    : "Add-ons use the same published amounts shown on the pricing page."}
+                </div>
               </div>
             </div>
 
