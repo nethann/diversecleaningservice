@@ -182,7 +182,7 @@ export function ChatWidget() {
       ) : null}
 
       {open ? (
-        <div className="fixed inset-0 z-50 flex flex-col bg-white sm:inset-auto sm:bottom-24 sm:right-5 sm:w-[min(390px,calc(100vw-2rem))] sm:max-h-[760px] sm:overflow-hidden sm:rounded-[2rem] sm:border sm:border-[#e4ddce] sm:shadow-[0_28px_70px_rgba(36,49,40,0.18)]">
+        <div className="fixed inset-4 z-50 flex flex-col overflow-hidden rounded-[2rem] border border-[#e4ddce] bg-white shadow-[0_28px_70px_rgba(36,49,40,0.18)] sm:inset-auto sm:bottom-24 sm:right-5 sm:w-[min(390px,calc(100vw-2rem))] sm:max-h-[760px]">
           <div className="border-b border-[#ece4d6] bg-[#f2ece1] px-4 py-4 sm:px-5">
             <div className="flex items-start justify-between gap-4">
               <div>
