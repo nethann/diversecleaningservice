@@ -1,14 +1,47 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
-import Link from "next/link";
+import { useEffect, useMemo, useRef, useState } from "react";
+
+const bookingPhoneNumber = "(470) 293-9475";
+const serviceAreaSummary = "We currently serve the Atlanta area and some Gwinnett counties.";
 
 const starterQuestions = [
   "What are your residential prices?",
   "Do you offer commercial cleaning?",
   "What add-ons do you offer?",
-  "How do I book?"
+  "Do you serve my area?"
 ];
+
+function AssistantBadge() {
+  return (
+    <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#6f8a67] text-xs font-semibold text-white shadow-sm">
+      DCS
+    </div>
+  );
+}
+
+function TypingDots() {
+  return (
+    <div className="flex items-center gap-1">
+      <span className="h-2 w-2 animate-pulse rounded-full bg-[#93a489]" />
+      <span className="h-2 w-2 animate-pulse rounded-full bg-[#93a489] [animation-delay:120ms]" />
+      <span className="h-2 w-2 animate-pulse rounded-full bg-[#93a489] [animation-delay:240ms]" />
+    </div>
+  );
+}
+
+function normalizeActions(actions) {
+  if (!Array.isArray(actions)) {
+    return [];
+  }
+
+  return actions
+    .filter((action) => action?.type)
+    .map((action) => ({
+      type: action.type,
+      label: action.label || action.type
+    }));
+}
 
 export function ChatWidget() {
   const [open, setOpen] = useState(false);
@@ -18,12 +51,27 @@ export function ChatWidget() {
     {
       role: "assistant",
       content:
-        "Hi! I can help with residential pricing, commercial cleaning estimates, add-ons, and booking questions."
+        "Hi! I can help with residential pricing, commercial cleaning estimates, add-ons, booking questions, and service area details.",
+      actions: []
     }
   ]);
+
   const formRef = useRef(null);
+  const messagesContainerRef = useRef(null);
 
   const visibleMessages = useMemo(() => messages.slice(-10), [messages]);
+
+  useEffect(() => {
+    const container = messagesContainerRef.current;
+    if (!container) {
+      return;
+    }
+
+    container.scrollTo({
+      top: container.scrollHeight,
+      behavior: "smooth"
+    });
+  }, [visibleMessages, loading, open]);
 
   async function sendMessage(messageText) {
     const trimmed = messageText.trim();
@@ -31,7 +79,7 @@ export function ChatWidget() {
       return;
     }
 
-    const nextMessages = [...messages, { role: "user", content: trimmed }];
+    const nextMessages = [...messages, { role: "user", content: trimmed, actions: [] }];
     setMessages(nextMessages);
     setInput("");
     setLoading(true);
@@ -58,7 +106,8 @@ export function ChatWidget() {
           role: "assistant",
           content:
             data.answer ??
-            "I’m sorry, I couldn’t answer that right now. Please call (470) 293-9475 and we’ll be happy to help."
+            "I'm sorry, I couldn't answer that right now. Please call (470) 293-9475 and we'll be happy to help.",
+          actions: normalizeActions(data.actions)
         }
       ]);
     } catch {
@@ -67,7 +116,8 @@ export function ChatWidget() {
         {
           role: "assistant",
           content:
-            "I’m sorry, I’m having trouble right now. Please call (470) 293-9475 for residential or commercial booking help."
+            "I'm sorry, I'm having trouble right now. Please call (470) 293-9475 for residential or commercial booking help.",
+          actions: [{ type: "show_phone_number", label: `Call ${bookingPhoneNumber}` }]
         }
       ]);
     } finally {
@@ -80,44 +130,124 @@ export function ChatWidget() {
     sendMessage(input);
   }
 
+  function handleKeyDown(event) {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      sendMessage(input);
+    }
+  }
+
+  function appendAssistantMessage(content, actions = []) {
+    setMessages((current) => [...current, { role: "assistant", content, actions }]);
+  }
+
+  function handleAction(action) {
+    switch (action.type) {
+      case "open_booking_page":
+        window.location.href = "/booking";
+        return;
+      case "open_pricing_page":
+        window.location.href = "/pricing";
+        return;
+      case "show_phone_number":
+        window.location.href = "tel:+14702939475";
+        return;
+      case "request_commercial_estimate":
+        appendAssistantMessage(
+          `For commercial cleaning, please call ${bookingPhoneNumber}. A technician will visit the property and provide an on-site estimate.`,
+          [
+            { type: "show_phone_number", label: `Call ${bookingPhoneNumber}` },
+            { type: "show_service_area", label: "Service area" }
+          ]
+        );
+        return;
+      case "show_service_area":
+        appendAssistantMessage(`${serviceAreaSummary} If you'd like to confirm your exact location, please call ${bookingPhoneNumber}.`);
+        return;
+      default:
+        return;
+    }
+  }
+
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen((current) => !current)}
-        className="fixed bottom-5 right-5 z-40 inline-flex items-center justify-center rounded-full bg-[#6f8a67] px-5 py-4 text-sm font-semibold text-white shadow-[0_18px_40px_rgba(36,49,40,0.25)] transition hover:bg-[#4c6247]"
-      >
-        {open ? "Close assistant" : "Chat with us"}
-      </button>
+      {!open ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="fixed bottom-5 right-5 z-40 inline-flex items-center justify-center rounded-full bg-[#6f8a67] px-5 py-4 text-sm font-semibold text-white shadow-[0_18px_40px_rgba(36,49,40,0.25)] transition hover:bg-[#4c6247]"
+        >
+          Chat with us
+        </button>
+      ) : null}
 
       {open ? (
-        <div className="fixed bottom-24 right-5 z-40 w-[min(380px,calc(100vw-2rem))] overflow-hidden rounded-[2rem] border border-[#e4ddce] bg-white shadow-[0_28px_70px_rgba(36,49,40,0.18)]">
+        <div className="fixed inset-x-4 bottom-4 top-20 z-40 overflow-hidden rounded-[2rem] border border-[#e4ddce] bg-white shadow-[0_28px_70px_rgba(36,49,40,0.18)] sm:inset-auto sm:bottom-24 sm:right-5 sm:top-auto sm:w-[min(390px,calc(100vw-2rem))]">
           <div className="border-b border-[#ece4d6] bg-[#f2ece1] px-5 py-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#6f8a67]">Diverse Cleaning Service</p>
-            <h2 className="mt-2 text-xl font-semibold text-[#243128]">Booking Assistant</h2>
-            <p className="mt-2 text-sm leading-6 text-[#5f6c61]">
-              Ask about pricing, add-ons, residential bookings, or commercial cleaning estimates.
-            </p>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#6f8a67]">Diverse Cleaning Service</p>
+                <div className="mt-2 flex items-center gap-3">
+                  <AssistantBadge />
+                  <div>
+                    <h2 className="text-xl font-semibold text-[#243128]">Booking Assistant</h2>
+                    <p className="text-xs text-[#6c7668]">Ask about pricing, booking, add-ons, or service areas.</p>
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                aria-label="Close chat"
+                className="mt-1 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/80 text-2xl font-semibold leading-none text-[#4c6247] transition hover:bg-white hover:text-[#243128]"
+              >
+                ×
+              </button>
+            </div>
           </div>
 
-          <div className="max-h-[420px] space-y-4 overflow-y-auto px-5 py-5">
+          <div ref={messagesContainerRef} className="max-h-[calc(100%-220px)] space-y-4 overflow-y-auto px-5 py-5 sm:max-h-[420px]">
             {visibleMessages.map((message, index) => (
               <div key={`${message.role}-${index}`} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-                <div
-                  className={`max-w-[85%] rounded-[1.4rem] px-4 py-3 text-sm leading-7 ${
-                    message.role === "user"
-                      ? "bg-[#6f8a67] text-white"
-                      : "bg-[#f7f3ea] text-[#374038]"
-                  }`}
-                >
-                  {message.content}
-                </div>
+                {message.role === "assistant" ? (
+                  <div className="flex max-w-[92%] items-start gap-3">
+                    <AssistantBadge />
+                    <div className="space-y-3">
+                      <div className="rounded-[1.4rem] border border-[#e8e1d3] bg-[#f7f3ea] px-4 py-3 text-sm leading-7 text-[#374038]">
+                        {message.content}
+                      </div>
+                      {message.actions?.length ? (
+                        <div className="flex flex-wrap gap-2">
+                          {message.actions.map((action) => (
+                            <button
+                              key={`${message.role}-${index}-${action.type}`}
+                              type="button"
+                              onClick={() => handleAction(action)}
+                              className="rounded-full border border-[#d9cfbb] bg-white px-3 py-2 text-xs font-semibold text-[#4c6247] transition hover:bg-[#f1ebde]"
+                            >
+                              {action.label}
+                            </button>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="max-w-[85%] rounded-[1.4rem] bg-[#6f8a67] px-4 py-3 text-sm leading-7 text-white">
+                    {message.content}
+                  </div>
+                )}
               </div>
             ))}
 
             {loading ? (
               <div className="flex justify-start">
-                <div className="rounded-[1.4rem] bg-[#f7f3ea] px-4 py-3 text-sm text-[#5f6c61]">Thinking...</div>
+                <div className="flex max-w-[90%] items-start gap-3">
+                  <AssistantBadge />
+                  <div className="rounded-[1.4rem] border border-[#e8e1d3] bg-[#f7f3ea] px-4 py-4">
+                    <TypingDots />
+                  </div>
+                </div>
               </div>
             ) : null}
           </div>
@@ -137,25 +267,27 @@ export function ChatWidget() {
             </div>
 
             <form ref={formRef} onSubmit={handleSubmit} className="space-y-3">
-              <textarea
-                rows={3}
-                value={input}
-                onChange={(event) => setInput(event.target.value)}
-                placeholder="Ask a question..."
-                className="field-input w-full rounded-[1.4rem]"
-              />
-              <div className="flex items-center justify-between gap-3">
-                <Link href="/booking" className="text-sm font-semibold text-[#4c6247]">
-                  Book online
-                </Link>
+              <div className="flex items-end gap-3">
+                <textarea
+                  rows={1}
+                  value={input}
+                  onChange={(event) => setInput(event.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Ask a question..."
+                  className="field-input min-h-[52px] flex-1 resize-none rounded-[1.4rem]"
+                />
                 <button
                   type="submit"
                   disabled={loading || !input.trim()}
-                  className="inline-flex items-center justify-center rounded-full bg-[#6f8a67] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#4c6247] disabled:cursor-not-allowed disabled:bg-[#b3beaf]"
+                  className="inline-flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-full bg-[#6f8a67] text-white transition hover:bg-[#4c6247] disabled:cursor-not-allowed disabled:bg-[#b3beaf]"
                 >
-                  Send
+                  <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M5 12h11" />
+                    <path d="M11 6l6 6-6 6" />
+                  </svg>
                 </button>
               </div>
+              <div className="text-xs text-[#7b8474]">Press Enter to send</div>
             </form>
           </div>
         </div>

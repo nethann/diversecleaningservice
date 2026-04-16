@@ -1,97 +1,11 @@
 import { NextResponse } from "next/server";
-import { addons, services } from "@/components/product-data";
-import { servicePages } from "@/components/service-data";
-
-const bookingPhoneNumber = "(470) 293-9475";
-
-const faqEntries = [
-  {
-    question: "Will I be able to communicate easily with your cleaning team?",
-    answer:
-      "Our team is friendly, professional, and easy to communicate with throughout the cleaning experience."
-  },
-  {
-    question: "What does your cleaning service include?",
-    answer:
-      "Services are detail-focused and designed to leave the home refreshed and polished, with special attention to kitchens, bathrooms, floors, and high-touch areas."
-  },
-  {
-    question: "What if I am not satisfied with my cleaning?",
-    answer:
-      "Your satisfaction comes first. If something is missed, Diverse Cleaning Service will make it right promptly."
-  },
-  {
-    question: "Can I get a quote and book online?",
-    answer:
-      "Yes. Residential customers can review pricing and book online. Commercial customers should call to schedule a walk-through and estimate."
-  }
-];
-
-function buildKnowledgeBase() {
-  const residentialServices = servicePages
-    .filter((service) => service.slug !== "commercial-cleaning-service")
-    .map((service) => {
-      const tiers = service.pricingTiers.map((tier) => `${tier.size}: ${tier.price}`).join("; ");
-      const includes = service.includes.join(", ");
-      return `${service.name} | ${service.priceLabel} | ${service.description} | Tiers: ${tiers} | Includes: ${includes}`;
-    })
-    .join("\n");
-
-  const commercialService = servicePages.find((service) => service.slug === "commercial-cleaning-service");
-  const addOnLines = addons.map((addon) => `${addon.name}: ${addon.priceLabel}`).join("; ");
-  const serviceList = services.map((service) => `${service.name}: ${service.priceLabel}`).join("; ");
-  const faqLines = faqEntries.map((entry) => `Q: ${entry.question} A: ${entry.answer}`).join("\n");
-
-  return `
-Business name: Diverse Cleaning Service
-Phone: ${bookingPhoneNumber}
-
-Residential and commercial cleaning are both offered.
-Residential customers can book online.
-Commercial customers should call and a technician will visit the property and provide an on-site estimate.
-
-Top-level services:
-${serviceList}
-
-Residential service details:
-${residentialServices}
-
-Commercial cleaning:
-${commercialService ? `${commercialService.description} | ${commercialService.pricingNote} | ${commercialService.includes.join(", ")}` : "Commercial cleaning is available by on-site estimate."}
-
-Add-on pricing:
-${addOnLines}
-
-FAQs:
-${faqLines}
-`;
-}
-
-function fallbackAnswer(question) {
-  const text = question.toLowerCase();
-
-  if (text.includes("commercial")) {
-    return `Yes. We offer commercial cleaning. For businesses, a technician will visit the property and provide an on-site estimate. Please call ${bookingPhoneNumber} to get started.`;
-  }
-
-  if (text.includes("residential") || text.includes("house cleaning") || text.includes("price")) {
-    return `Residential pricing currently starts at $90 - $110 for a 1 bedroom / 1 bath standard cleaning and goes up based on home size and service type. You can also view the full pricing page or ask about a specific service.`;
-  }
-
-  if (text.includes("add-on") || text.includes("oven") || text.includes("refrigerator") || text.includes("windows") || text.includes("laundry") || text.includes("pet")) {
-    return "Add-ons include Inside Oven ($25 - $40), Inside Refrigerator ($25 - $40), Inside Cabinets ($25 - $50), Interior Windows ($5 per window), Laundry ($20 - $30), and Pet Hair Removal ($25 - $50).";
-  }
-
-  if (text.includes("book") || text.includes("appointment")) {
-    return `Residential customers can book online through the booking page. For residential or commercial booking help, please call ${bookingPhoneNumber}.`;
-  }
-
-  if (text.includes("satisfaction") || text.includes("missed")) {
-    return "Your satisfaction comes first. If something is missed, Diverse Cleaning Service will make it right promptly.";
-  }
-
-  return `I can help with residential pricing, add-ons, service types, and commercial cleaning estimates. You can also call ${bookingPhoneNumber} for residential or commercial booking support.`;
-}
+import {
+  bookingPhoneNumber,
+  buildKnowledgeBlock,
+  fallbackAssistantAnswer,
+  siteAssistantSystemPrompt,
+  suggestAssistantActions
+} from "@/lib/site-assistant-data";
 
 export async function POST(request) {
   try {
@@ -105,10 +19,11 @@ export async function POST(request) {
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ answer: fallbackAnswer(latestUserMessage) });
+      const answer = fallbackAssistantAnswer(latestUserMessage);
+      return NextResponse.json({ answer, actions: suggestAssistantActions(latestUserMessage, answer) });
     }
 
-    const knowledgeBase = buildKnowledgeBase();
+    const relevantKnowledge = buildKnowledgeBlock(latestUserMessage, messages.slice(-8));
     const model = process.env.OPENAI_MODEL || "gpt-4.1-mini";
 
     const input = [
@@ -117,16 +32,11 @@ export async function POST(request) {
         content: [
           {
             type: "input_text",
-            text:
-              "You are the website chatbot for Diverse Cleaning Service. Answer warmly, briefly, and accurately using only the provided business information. If asked about commercial cleaning, say a technician will visit and provide an on-site estimate. If asked how to book, explain that residential can book online and residential or commercial customers can call " +
-              bookingPhoneNumber +
-              ". Do not invent discounts, service areas, or policies that are not provided. If unsure, recommend calling " +
-              bookingPhoneNumber +
-              "."
+            text: siteAssistantSystemPrompt
           },
           {
             type: "input_text",
-            text: `Business knowledge:\n${knowledgeBase}`
+            text: `Relevant business knowledge:\n${relevantKnowledge}`
           }
         ]
       },
@@ -149,19 +59,24 @@ export async function POST(request) {
     });
 
     if (!response.ok) {
-      return NextResponse.json({ answer: fallbackAnswer(latestUserMessage) });
+      console.error("OpenAI chat response failed", response.status, response.statusText);
+      const answer = fallbackAssistantAnswer(latestUserMessage);
+      return NextResponse.json({ answer, actions: suggestAssistantActions(latestUserMessage, answer) });
     }
 
     const data = await response.json();
     const answer =
       data.output_text ||
       data.output?.flatMap((item) => item.content || []).find((item) => item.type === "output_text")?.text ||
-      fallbackAnswer(latestUserMessage);
+      fallbackAssistantAnswer(latestUserMessage);
 
-    return NextResponse.json({ answer });
-  } catch {
+    return NextResponse.json({ answer, actions: suggestAssistantActions(latestUserMessage, answer) });
+  } catch (error) {
+    console.error("OpenAI chat route error", error);
+    const answer = `I'm sorry, I'm having trouble right now. Please call ${bookingPhoneNumber} for residential or commercial booking support.`;
     return NextResponse.json({
-      answer: `I’m sorry, I’m having trouble right now. Please call ${bookingPhoneNumber} for residential or commercial booking support.`
+      answer,
+      actions: suggestAssistantActions("call booking support", answer)
     });
   }
 }

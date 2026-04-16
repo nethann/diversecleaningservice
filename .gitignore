@@ -3,3 +3,4 @@ frontend/.next/
 frontend/.next-dev.log
 frontend/.next-dev.err.log
 npm-debug.log*
+frontend/.env.local
