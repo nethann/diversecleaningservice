@@ -3,7 +3,30 @@ import { servicePages } from "@/components/service-data";
 import { siteAssistantFaqs } from "@/lib/site-assistant-faqs";
 
 export const bookingPhoneNumber = "(470) 293-9475";
-export const serviceAreaSummary = "We currently serve the Atlanta area and some Gwinnett counties.";
+export const serviceAreaSummary =
+  "We serve the greater Atlanta metro area including Atlanta, DeKalb, Fulton, Gwinnett, Cobb, Clayton, Henry, and Douglas counties.";
+
+export const serviceZipCodes = new Set([
+  // Atlanta city
+  "30301","30302","30303","30304","30305","30306","30307","30308","30309","30310",
+  "30311","30312","30313","30314","30315","30316","30318","30319","30324","30326",
+  "30327","30328","30329","30331","30334","30336","30337","30338","30339","30340",
+  "30341","30342","30344","30345","30346","30349",
+  // DeKalb / East Atlanta
+  "30021","30030","30032","30033","30034","30035","30036","30072","30079","30083",
+  "30084","30087","30088",
+  // North Fulton / Alpharetta / Roswell
+  "30004","30005","30009","30022","30023","30024","30075","30076","30092","30097",
+  // Gwinnett
+  "30043","30044","30045","30046","30047","30052","30071","30078","30093","30096",
+  // Cobb / Marietta
+  "30060","30062","30064","30066","30067","30068","30080","30082",
+  // South / Clayton / Henry
+  "30094","30213","30236","30238","30260","30268","30273","30274","30281","30288",
+  "30291","30294",
+  // Douglas / West
+  "30122","30126","30127","30134","30135"
+]);
 
 const frontDeskPlaybook = [
   {
@@ -114,9 +137,9 @@ const businessRules = [
   },
   {
     id: "service-area",
-    title: "Service area",
-    tags: ["service area", "location", "atlanta", "gwinnett", "gwinnette", "county", "counties", "where do you service"],
-    content: serviceAreaSummary
+    title: "Service area and zip codes",
+    tags: ["service area", "location", "zip", "zip code", "zipcode", "atlanta", "gwinnett", "cobb", "dekalb", "fulton", "county", "counties", "where do you service", "do you serve"],
+    content: `${serviceAreaSummary} Served zip codes: ${[...serviceZipCodes].join(", ")}.`
   },
   {
     id: "supplies-what-to-expect",
@@ -273,7 +296,7 @@ Rules:
 - If the question is about commercial cleaning, explain that a technician will visit the property and provide an on-site estimate.
 - If the question is about booking, explain that residential customers can book online and residential or commercial customers can call ${bookingPhoneNumber}.
 - If the user asks about pricing, answer with the real ranges and exact add-on amounts when available.
-- If the user asks about location or service area, explain that the business currently serves the Atlanta area and some Gwinnett counties.
+- If the user asks about location, service area, or whether you serve their area: ask for their zip code if they haven't provided one. Once they provide a 5-digit zip code, check it against the served zip codes list in the knowledge block. If it is in the list, confirm that you do serve their area and suggest booking. If it is not in the list, politely say you don't currently serve that zip code and mention you cover the greater Atlanta metro area.
 - If the question is ambiguous, ask one short clarifying question.
 - If the customer seems to be deciding between services, help them choose.
 - If the customer seems ready to act, naturally point them toward booking, pricing, calling, or a commercial estimate.
@@ -291,7 +314,7 @@ export function detectPrimaryIntent(question, messages = []) {
   if (/(price|pricing|cost|how much|quote|rate)/.test(text)) return "pricing";
   if (/(included|what does.*include|scope|what is included)/.test(text)) return "included";
   if (/(book|booking|schedule|appointment)/.test(text)) return "booking";
-  if (/(service area|location|atlanta|gwinnett|county)/.test(text)) return "location";
+  if (/(service area|location|zip|zipcode|zip code|atlanta|gwinnett|cobb|dekalb|fulton|county|\b3\d{4}\b)/.test(text)) return "location";
   if (/(satisfied|missed|problem|issue|fix|make it right)/.test(text)) return "satisfaction";
   if (/(supplies|products|bring|equipment|expect)/.test(text)) return "supplies";
   return "general";
@@ -352,12 +375,19 @@ export function suggestAssistantActions(question, answer = "") {
   if (
     text.includes("location") ||
     text.includes("service area") ||
+    text.includes("zip") ||
     text.includes("atlanta") ||
     text.includes("gwinnett") ||
     text.includes("gwynette") ||
-    text.includes("county")
+    text.includes("county") ||
+    /\b3\d{4}\b/.test(text)
   ) {
-    addAction("show_service_area", "Service area");
+    // If a zip was confirmed as served, suggest booking; otherwise show service area info
+    if (/yes.*serve|do serve|we serve.*\b3\d{4}\b|\b3\d{4}\b.*yes/.test(text)) {
+      addAction("open_booking_page", "Book online");
+    } else {
+      addAction("show_service_area", "Service area");
+    }
   }
 
   return actions.slice(0, 3);
@@ -472,15 +502,26 @@ export function fallbackAssistantAnswer(question) {
     return `Yes. We offer commercial cleaning. A technician will visit the property and provide an on-site estimate. Please call ${bookingPhoneNumber} to get started.`;
   }
 
+  const zipMatch = text.match(/\b(3\d{4})\b/);
+  if (zipMatch) {
+    const zip = zipMatch[1];
+    if (serviceZipCodes.has(zip)) {
+      return `Yes! We do serve zip code ${zip}. You can book online or call ${bookingPhoneNumber} for help.`;
+    } else {
+      return `Unfortunately we don't currently serve zip code ${zip}. We cover the greater Atlanta metro area. If you're nearby, feel free to call ${bookingPhoneNumber} and we can confirm coverage.`;
+    }
+  }
+
   if (
     text.includes("location") ||
     text.includes("service area") ||
+    text.includes("zip") ||
     text.includes("atlanta") ||
     text.includes("gwinnett") ||
     text.includes("gwynette") ||
     text.includes("county")
   ) {
-    return `${serviceAreaSummary} If you'd like to confirm your exact location, please call ${bookingPhoneNumber}.`;
+    return `To check if we serve your area, could you share your zip code? We cover the greater Atlanta metro including Atlanta, DeKalb, Fulton, Gwinnett, Cobb, Clayton, Henry, and Douglas counties.`;
   }
 
   if (
