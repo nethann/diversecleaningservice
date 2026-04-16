@@ -5,6 +5,44 @@ import { siteAssistantFaqs } from "@/lib/site-assistant-faqs";
 export const bookingPhoneNumber = "(470) 293-9475";
 export const serviceAreaSummary = "We currently serve the Atlanta area and some Gwinnett counties.";
 
+const frontDeskPlaybook = [
+  {
+    id: "playbook-tone",
+    title: "Front desk tone",
+    tags: ["tone", "style", "front desk", "receptionist", "warm", "helpful"],
+    content:
+      "Answer like a smart front-desk assistant: warm, calm, concise, confident, and helpful. Sound like a human receptionist for the business."
+  },
+  {
+    id: "playbook-clarify",
+    title: "Clarifying questions",
+    tags: ["clarify", "follow-up", "ambiguous", "not sure", "which service"],
+    content:
+      "If a customer question is broad or unclear, ask one short clarifying question instead of guessing. Examples: ask whether they mean residential or commercial, or which cleaning type they are comparing."
+  },
+  {
+    id: "playbook-guidance",
+    title: "Guidance behavior",
+    tags: ["guide", "recommend", "help choose", "which service", "what should i pick"],
+    content:
+      "When a customer asks which service is right, briefly compare options and help them choose. Standard cleaning is for routine upkeep, deep cleaning is for heavier detail work, move-in/move-out is for empty-home transitions, and commercial cleaning is for business spaces with an on-site estimate."
+  },
+  {
+    id: "playbook-handoff",
+    title: "Human handoff",
+    tags: ["call", "handoff", "speak to someone", "help", "agent", "representative"],
+    content:
+      "When a customer wants direct help, encourage them to call (470) 293-9475 for residential or commercial booking support."
+  },
+  {
+    id: "playbook-trust",
+    title: "Trust building",
+    tags: ["trust", "safe", "peace of mind", "comfortable", "professional"],
+    content:
+      "When customers ask trust or comfort questions, emphasize respectful service, professionalism, clear communication, and the goal of leaving the space refreshed and well cared for."
+  }
+];
+
 const faqEntries = [
   {
     question: "Will I be able to communicate easily with your cleaning team?",
@@ -212,6 +250,7 @@ const categoryFaqKnowledge = Object.entries(siteAssistantFaqs).flatMap(([categor
 );
 
 export const siteAssistantKnowledge = [
+  ...frontDeskPlaybook,
   ...coreIntentKnowledge,
   ...businessRules,
   ...serviceKnowledge,
@@ -226,7 +265,7 @@ You are the website assistant for Diverse Cleaning Service.
 Your job:
 - Answer customer questions about this site, services, pricing, add-ons, booking, and commercial estimates.
 - Be warm, clear, and concise.
-- Sound like a helpful business assistant, not a generic AI.
+- Sound like a smart front-desk assistant for the business, not a generic AI.
 
 Rules:
 - Use only the supplied business knowledge.
@@ -236,9 +275,27 @@ Rules:
 - If the user asks about pricing, answer with the real ranges and exact add-on amounts when available.
 - If the user asks about location or service area, explain that the business currently serves the Atlanta area and some Gwinnett counties.
 - If the question is ambiguous, ask one short clarifying question.
+- If the customer seems to be deciding between services, help them choose.
+- If the customer seems ready to act, naturally point them toward booking, pricing, calling, or a commercial estimate.
+- Prefer practical, customer-facing answers over abstract explanations.
 - If you still do not know, recommend calling ${bookingPhoneNumber}.
-- Keep answers practical and customer-facing.
+- Keep answers short enough to feel conversational.
 `;
+
+export function detectPrimaryIntent(question, messages = []) {
+  const text = `${messages.map((message) => message.content).join(" ")} ${question}`.toLowerCase();
+
+  if (/(commercial|business|office|estimate|walk-through)/.test(text)) return "commercial_estimate";
+  if (/(difference|compare|which service|what should i choose|best fit)/.test(text)) return "service_guidance";
+  if (/(add-on|addon|oven|refrigerator|fridge|cabinet|windows|laundry|pet)/.test(text)) return "addons";
+  if (/(price|pricing|cost|how much|quote|rate)/.test(text)) return "pricing";
+  if (/(included|what does.*include|scope|what is included)/.test(text)) return "included";
+  if (/(book|booking|schedule|appointment)/.test(text)) return "booking";
+  if (/(service area|location|atlanta|gwinnett|county)/.test(text)) return "location";
+  if (/(satisfied|missed|problem|issue|fix|make it right)/.test(text)) return "satisfaction";
+  if (/(supplies|products|bring|equipment|expect)/.test(text)) return "supplies";
+  return "general";
+}
 
 export function suggestAssistantActions(question, answer = "") {
   const text = `${question} ${answer}`.toLowerCase();
@@ -366,6 +423,42 @@ export function buildRelevantKnowledge(question, messages = []) {
 export function buildKnowledgeBlock(question, messages = []) {
   const relevant = buildRelevantKnowledge(question, messages);
   return relevant.map((entry) => `${entry.title}: ${entry.content}`).join("\n\n");
+}
+
+export function buildFrontDeskContext(question, messages = []) {
+  const intent = detectPrimaryIntent(question, messages);
+  const recentConversation = messages
+    .slice(-4)
+    .map((message) => `${message.role === "user" ? "Customer" : "Assistant"}: ${message.content}`)
+    .join("\n");
+
+  const intentGuidanceMap = {
+    pricing:
+      "The customer is asking about price. Answer with exact published residential ranges when available and mention commercial cleaning is estimate-based if relevant.",
+    included:
+      "The customer wants to know what is included. Use the service scope lists and explain clearly.",
+    addons:
+      "The customer is asking about add-ons. Use exact add-on pricing and names.",
+    booking:
+      "The customer is asking how to book or schedule. Guide them clearly: residential can book online, residential or commercial can call, commercial needs a walk-through estimate.",
+    commercial_estimate:
+      "The customer is asking about business cleaning or estimates. Explain the technician visit and on-site estimate process confidently.",
+    service_guidance:
+      "The customer needs help choosing a service. Compare standard, deep cleaning, move-in/move-out, and commercial cleaning briefly and help them choose.",
+    location:
+      "The customer is asking about service area. State that the business currently serves the Atlanta area and some Gwinnett counties.",
+    satisfaction:
+      "The customer is asking about issues or satisfaction. Reassure them that if something is missed, it will be made right promptly.",
+    supplies:
+      "The customer is asking about supplies or what to expect. Answer carefully using only listed business knowledge and invite a phone call for specifics if policy details are not explicit.",
+    general:
+      "Answer helpfully using the most relevant business information and keep the tone like a front-desk assistant."
+  };
+
+  return {
+    intent,
+    summary: `Primary intent: ${intent}\nIntent guidance: ${intentGuidanceMap[intent]}\nRecent conversation:\n${recentConversation || "No prior conversation."}`
+  };
 }
 
 export function fallbackAssistantAnswer(question) {

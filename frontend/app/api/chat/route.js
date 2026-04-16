@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   bookingPhoneNumber,
+  buildFrontDeskContext,
   buildKnowledgeBlock,
   fallbackAssistantAnswer,
   siteAssistantSystemPrompt,
@@ -23,7 +24,9 @@ export async function POST(request) {
       return NextResponse.json({ answer, actions: suggestAssistantActions(latestUserMessage, answer) });
     }
 
-    const relevantKnowledge = buildKnowledgeBlock(latestUserMessage, messages.slice(-8));
+    const recentMessages = messages.slice(-8);
+    const relevantKnowledge = buildKnowledgeBlock(latestUserMessage, recentMessages);
+    const frontDeskContext = buildFrontDeskContext(latestUserMessage, recentMessages);
     const model = process.env.OPENAI_MODEL || "gpt-4.1-mini";
 
     const input = [
@@ -37,10 +40,14 @@ export async function POST(request) {
           {
             type: "input_text",
             text: `Relevant business knowledge:\n${relevantKnowledge}`
+          },
+          {
+            type: "input_text",
+            text: `Front desk context:\n${frontDeskContext.summary}`
           }
         ]
       },
-      ...messages.slice(-8).map((message) => ({
+      ...recentMessages.map((message) => ({
         role: message.role,
         content: [{ type: "input_text", text: message.content }]
       }))

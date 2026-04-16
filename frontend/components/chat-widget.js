@@ -182,15 +182,15 @@ export function ChatWidget() {
       ) : null}
 
       {open ? (
-        <div className="fixed inset-x-4 bottom-4 top-20 z-40 overflow-hidden rounded-[2rem] border border-[#e4ddce] bg-white shadow-[0_28px_70px_rgba(36,49,40,0.18)] sm:inset-auto sm:bottom-24 sm:right-5 sm:top-auto sm:w-[min(390px,calc(100vw-2rem))]">
-          <div className="border-b border-[#ece4d6] bg-[#f2ece1] px-5 py-4">
+        <div className="fixed inset-0 z-50 flex flex-col bg-white sm:inset-auto sm:bottom-24 sm:right-5 sm:w-[min(390px,calc(100vw-2rem))] sm:max-h-[760px] sm:overflow-hidden sm:rounded-[2rem] sm:border sm:border-[#e4ddce] sm:shadow-[0_28px_70px_rgba(36,49,40,0.18)]">
+          <div className="border-b border-[#ece4d6] bg-[#f2ece1] px-4 py-4 sm:px-5">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#6f8a67]">Diverse Cleaning Service</p>
                 <div className="mt-2 flex items-center gap-3">
                   <AssistantBadge />
                   <div>
-                    <h2 className="text-xl font-semibold text-[#243128]">Booking Assistant</h2>
+                    <h2 className="text-lg font-semibold text-[#243128] sm:text-xl">Booking Assistant</h2>
                     <p className="text-xs text-[#6c7668]">Ask about pricing, booking, add-ons, or service areas.</p>
                   </div>
                 </div>
@@ -206,7 +206,7 @@ export function ChatWidget() {
             </div>
           </div>
 
-          <div ref={messagesContainerRef} className="max-h-[calc(100%-220px)] space-y-4 overflow-y-auto px-5 py-5 sm:max-h-[420px]">
+          <div ref={messagesContainerRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-5 sm:py-5">
             {visibleMessages.map((message, index) => (
               <div key={`${message.role}-${index}`} className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}>
                 {message.role === "assistant" ? (
@@ -252,7 +252,7 @@ export function ChatWidget() {
             ) : null}
           </div>
 
-          <div className="border-t border-[#ece4d6] px-5 py-4">
+          <div className="border-t border-[#ece4d6] px-4 py-4 sm:px-5">
             <div className="mb-3 flex flex-wrap gap-2">
               {starterQuestions.map((question) => (
                 <button
