@@ -67,6 +67,13 @@ export async function initDatabase() {
       const schemaPath = await resolveDatabaseFile("schema.sql");
       const schemaSql = await readFile(schemaPath, "utf8");
       await getPool().query(schemaSql);
+      const authSchemaPath = await resolveDatabaseFile("auth-schema.sql");
+      try {
+        const authSchemaSql = await readFile(authSchemaPath, "utf8");
+        await getPool().query(authSchemaSql);
+      } catch {
+        // Auth schema is optional until authentication is configured.
+      }
     })();
   }
 

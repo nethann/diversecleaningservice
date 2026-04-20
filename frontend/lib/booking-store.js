@@ -1,4 +1,5 @@
-import { addons, services, team, timeSlots } from "@/components/product-data";
+import { addons, services, timeSlots } from "@/components/product-data";
+import { listAdminTeamMembers } from "@/lib/admin-auth";
 import { getPool, query } from "@/lib/db";
 
 let seedPromise;
@@ -123,10 +124,10 @@ async function ensureReferenceData() {
   return seedPromise;
 }
 
-function getAvailableTeams(bookings, date, slot) {
+function getAvailableTeams(bookings, date, slot, teamMembers) {
   const weekday = getWeekday(date);
 
-  return team.filter((member) => {
+  return teamMembers.filter((member) => {
     const worksThisSlot = member.days.includes(weekday) && member.slots.includes(slot);
     if (!worksThisSlot) {
       return false;
@@ -191,9 +192,10 @@ export async function bootstrapBookingDatabase() {
 
 export async function getSlotSummaries(date) {
   const bookings = await listBookings();
+  const teamMembers = await listAdminTeamMembers();
 
   return timeSlots.map((slot) => {
-    const availableTeams = getAvailableTeams(bookings, date, slot);
+    const availableTeams = getAvailableTeams(bookings, date, slot, teamMembers);
 
     return {
       slot,
@@ -292,7 +294,8 @@ export async function createBooking(payload) {
   }
 
   const bookings = await listBookings();
-  const availableTeams = getAvailableTeams(bookings, payload.date, payload.time);
+  const teamMembers = await listAdminTeamMembers();
+  const availableTeams = getAvailableTeams(bookings, payload.date, payload.time, teamMembers);
 
   if (availableTeams.length === 0) {
     return { error: "That slot was just taken. Choose another available time.", status: 409 };
