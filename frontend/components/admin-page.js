@@ -152,6 +152,7 @@ export function AdminPage({ adminUser }) {
   const [availabilityModalOpen, setAvailabilityModalOpen] = useState(false);
   const [teamCoverageOpen, setTeamCoverageOpen] = useState(false);
   const [statusMenuOpenId, setStatusMenuOpenId] = useState("");
+  const [cancelModalBooking, setCancelModalBooking] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [serviceFilter, setServiceFilter] = useState("all");
@@ -338,10 +339,6 @@ export function AdminPage({ adminUser }) {
   }
 
   async function handleStatusUpdate(id, status) {
-    if (status === "cancelled" && !window.confirm("Are you sure you want to cancel this booking?")) {
-      return;
-    }
-
     setStatusSavingId(id);
 
     const selectedIds = assignmentSelection[id] ?? [];
@@ -434,6 +431,20 @@ export function AdminPage({ adminUser }) {
     } finally {
       setStatusSavingId("");
     }
+  }
+
+  function requestBookingCancellation(booking) {
+    setStatusMenuOpenId("");
+    setCancelModalBooking(booking);
+  }
+
+  async function confirmBookingCancellation() {
+    if (!cancelModalBooking) {
+      return;
+    }
+
+    await handleStatusUpdate(cancelModalBooking.id, "cancelled");
+    setCancelModalBooking(null);
   }
 
   function toggleAvailability(weekday, timeSlot) {
@@ -723,6 +734,11 @@ export function AdminPage({ adminUser }) {
                                         key={option.value}
                                         type="button"
                                         onClick={() => {
+                                          if (option.value === "cancelled") {
+                                            requestBookingCancellation(booking);
+                                            return;
+                                          }
+
                                           setStatusMenuOpenId("");
                                           handleStatusUpdate(booking.id, option.value);
                                         }}
@@ -1045,6 +1061,36 @@ export function AdminPage({ adminUser }) {
                 className="rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
               >
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {cancelModalBooking ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 py-8">
+          <div className="w-full max-w-lg rounded-[2rem] border border-[#e6e0d3] bg-white p-6 shadow-[0_30px_90px_rgba(15,23,42,0.22)] sm:p-8">
+            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-rose-700">Cancel booking</div>
+            <h3 className="mt-2 text-2xl font-semibold text-slate-950">Are you sure?</h3>
+            <p className="mt-3 text-sm leading-7 text-slate-600">
+              This will cancel the booking for {cancelModalBooking.customer} on {formatDateLabel(cancelModalBooking.date)} at{" "}
+              {cancelModalBooking.time}. The slot will become available again for scheduling.
+            </p>
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={confirmBookingCancellation}
+                disabled={statusSavingId === cancelModalBooking.id}
+                className="rounded-full bg-rose-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-60"
+              >
+                {statusSavingId === cancelModalBooking.id ? "Cancelling..." : "Yes, cancel booking"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setCancelModalBooking(null)}
+                className="rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                Keep booking
               </button>
             </div>
           </div>
