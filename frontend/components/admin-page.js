@@ -151,6 +151,7 @@ export function AdminPage({ adminUser }) {
   const [availabilityMessage, setAvailabilityMessage] = useState("");
   const [availabilityModalOpen, setAvailabilityModalOpen] = useState(false);
   const [teamCoverageOpen, setTeamCoverageOpen] = useState(false);
+  const [statusMenuOpenId, setStatusMenuOpenId] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [serviceFilter, setServiceFilter] = useState("all");
@@ -259,6 +260,15 @@ export function AdminPage({ adminUser }) {
     const timeout = setTimeout(() => setToast(null), 2800);
     return () => clearTimeout(timeout);
   }, [toast]);
+
+  useEffect(() => {
+    function handleWindowClick() {
+      setStatusMenuOpenId("");
+    }
+
+    window.addEventListener("click", handleWindowClick);
+    return () => window.removeEventListener("click", handleWindowClick);
+  }, []);
 
   async function handleInitDatabase() {
     setInitMessage("Initializing database...");
@@ -685,26 +695,45 @@ export function AdminPage({ adminUser }) {
                             </div>
                           </div>
                           <div>
-                            <div
-                              className={`relative inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusTone[booking.status] ?? "bg-slate-100 text-slate-700"}`}
-                            >
-                              <select
-                                value={booking.status}
-                                onChange={(event) => handleStatusUpdate(booking.id, event.target.value)}
+                            <div className="relative">
+                              <button
+                                type="button"
+                                onClick={(event) => {
+                                  event.stopPropagation();
+                                  setStatusMenuOpenId((current) => (current === booking.id ? "" : booking.id));
+                                }}
                                 disabled={statusSavingId === booking.id}
-                                className="appearance-none bg-transparent pr-5 text-xs font-semibold capitalize text-current outline-none disabled:cursor-not-allowed"
-                                aria-label={`Update status for ${booking.customer}`}
+                                className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold capitalize shadow-sm transition ${
+                                  statusTone[booking.status] ?? "bg-slate-100 text-slate-700"
+                                } disabled:cursor-not-allowed disabled:opacity-60`}
                               >
-                                <option value={booking.status}>{formatStatusLabel(booking.status)}</option>
-                                {statusOptions
-                                  .filter((option) => option.value !== booking.status)
-                                  .map((option) => (
-                                    <option key={option.value} value={option.value}>
-                                      {option.label}
-                                    </option>
-                                  ))}
-                              </select>
-                              <span className="pointer-events-none absolute right-3 text-[10px]">v</span>
+                                <span>{formatStatusLabel(booking.status)}</span>
+                                <span className={`text-[10px] transition ${statusMenuOpenId === booking.id ? "rotate-180" : ""}`}>v</span>
+                              </button>
+
+                              {statusMenuOpenId === booking.id ? (
+                                <div
+                                  className="absolute right-0 top-full z-20 mt-2 min-w-[170px] overflow-hidden rounded-2xl border border-[#e6dcc8] bg-white shadow-[0_18px_45px_rgba(15,23,42,0.12)]"
+                                  onClick={(event) => event.stopPropagation()}
+                                >
+                                  {statusOptions
+                                    .filter((option) => option.value !== booking.status)
+                                    .map((option) => (
+                                      <button
+                                        key={option.value}
+                                        type="button"
+                                        onClick={() => {
+                                          setStatusMenuOpenId("");
+                                          handleStatusUpdate(booking.id, option.value);
+                                        }}
+                                        className="flex w-full items-center justify-between border-b border-slate-100 px-4 py-3 text-left text-sm font-medium text-slate-700 transition last:border-b-0 hover:bg-slate-50"
+                                      >
+                                        <span>{option.label}</span>
+                                        <span className="text-xs text-slate-400">{formatStatusLabel(option.value)}</span>
+                                      </button>
+                                    ))}
+                                </div>
+                              ) : null}
                             </div>
                           </div>
                           <div className="flex justify-start lg:justify-end">
