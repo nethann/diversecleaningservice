@@ -14,6 +14,20 @@ const statusTone = {
   in_progress: "bg-sky-50 text-sky-700"
 };
 
+const paymentTone = {
+  none: "bg-slate-100 text-slate-500",
+  unpaid: "bg-amber-50 text-amber-700",
+  paid: "bg-emerald-50 text-emerald-700",
+  failed: "bg-rose-50 text-rose-700"
+};
+
+const paymentLabel = {
+  none: "No invoice",
+  unpaid: "Invoice sent",
+  paid: "Paid",
+  failed: "Payment failed"
+};
+
 const statusOptions = [
   { value: "assigned", label: "Assign" },
   { value: "completed", label: "Complete" },
@@ -200,6 +214,8 @@ export function AdminPage({ adminUser }) {
   const [internalNotesDraft, setInternalNotesDraft] = useState({});
   const [toast, setToast] = useState(null);
   const [detailPanelOpen, setDetailPanelOpen] = useState({});
+  const [invoiceDraft, setInvoiceDraft] = useState({});
+  const [invoiceCreatingId, setInvoiceCreatingId] = useState("");
 
   function getBookingAssignmentIds(booking) {
     const lockedStatuses = new Set(["assigned", "completed", "in_progress"]);
@@ -553,6 +569,54 @@ export function AdminPage({ adminUser }) {
     }
   }
 
+  async function handleCreateInvoice(bookingId) {
+    const draft = invoiceDraft[bookingId] ?? {};
+    const amountDollars = parseFloat(draft.amount ?? "");
+
+    if (!amountDollars || amountDollars < 0.5) {
+      setToast({ tone: "error", message: "Enter a valid amount (min $0.50)." });
+      return;
+    }
+
+    setInvoiceCreatingId(bookingId);
+
+    try {
+      const response = await fetch(`/api/bookings/${bookingId}/invoice`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amountCents: Math.round(amountDollars * 100),
+          description: draft.description?.trim() || undefined
+        })
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to create invoice.");
+      }
+
+      setBookings((current) =>
+        current.map((b) =>
+          b.id === bookingId
+            ? {
+                ...b,
+                stripeInvoiceId: data.booking.stripeInvoiceId,
+                stripePaymentUrl: data.booking.stripePaymentUrl,
+                paymentStatus: data.booking.paymentStatus,
+                paymentAmount: data.booking.paymentAmount
+              }
+            : b
+        )
+      );
+      setInvoiceDraft((current) => ({ ...current, [bookingId]: { amount: "", description: "" } }));
+      setToast({ tone: "success", message: "Invoice created and sent to customer." });
+    } catch (error) {
+      setToast({ tone: "error", message: error.message || "Failed to create invoice." });
+    } finally {
+      setInvoiceCreatingId("");
+    }
+  }
+
   return (
     <main className="pb-20">
       <SiteHeader />
@@ -775,7 +839,10 @@ export function AdminPage({ adminUser }) {
                               ) : null}
                             </div>
                           </div>
-                          <div className="flex justify-start lg:justify-end">
+                          <div className="flex flex-wrap items-center justify-start gap-2 lg:justify-end">
+                            <span className={`inline-flex rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${paymentTone[booking.paymentStatus] ?? paymentTone.none}`}>
+                              {paymentLabel[booking.paymentStatus] ?? "No invoice"}
+                            </span>
                             <button
                               type="button"
                               onClick={() => setExpandedBookingId(isExpanded ? "" : booking.id)}
@@ -952,6 +1019,88 @@ export function AdminPage({ adminUser }) {
                                   );
                                 })}
                               </div>
+                            </div>
+
+                            <div className="rounded-3xl bg-mist p-5 sm:p-6">
+                              <div className="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                  <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">Payment</div>
+                                  <div className="mt-2 text-lg font-semibold text-slate-950">Stripe invoice</div>
+                                  <div className="mt-1 text-sm text-slate-500">
+                                    Create a custom invoice and send it to the customer by email.
+                                  </div>
+                                </div>
+                                <span className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] ${paymentTone[booking.paymentStatus] ?? paymentTone.none}`}>
+                                  {paymentLabel[booking.paymentStatus] ?? "No invoice"}
+                                </span>
+                              </div>
+
+                              {booking.stripeInvoiceId ? (
+                                <div className="mt-4 space-y-2">
+                                  <div className="text-sm text-slate-700">
+                                    <span className="font-medium">Amount: </span>
+                                    ${(booking.paymentAmount / 100).toFixed(2)}
+                                  </div>
+                                  {booking.stripePaymentUrl ? (
+                                    <a
+                                      href={booking.stripePaymentUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-white px-4 py-2 text-sm font-semibold text-brand-700 transition hover:bg-brand-50"
+                                    >
+                                      View invoice
+                                    </a>
+                                  ) : null}
+                                </div>
+                              ) : (
+                                <div className="mt-4 space-y-3">
+                                  <div className="grid gap-3 sm:grid-cols-2">
+                                    <label className="block">
+                                      <span className="text-xs text-slate-500">Amount (USD)</span>
+                                      <div className="relative mt-1">
+                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">$</span>
+                                        <input
+                                          type="number"
+                                          min="0.50"
+                                          step="0.01"
+                                          value={invoiceDraft[booking.id]?.amount ?? ""}
+                                          onChange={(e) =>
+                                            setInvoiceDraft((current) => ({
+                                              ...current,
+                                              [booking.id]: { ...(current[booking.id] ?? {}), amount: e.target.value }
+                                            }))
+                                          }
+                                          placeholder="0.00"
+                                          className="field-input w-full pl-7"
+                                        />
+                                      </div>
+                                    </label>
+                                    <label className="block">
+                                      <span className="text-xs text-slate-500">Line item description (optional)</span>
+                                      <input
+                                        type="text"
+                                        value={invoiceDraft[booking.id]?.description ?? ""}
+                                        onChange={(e) =>
+                                          setInvoiceDraft((current) => ({
+                                            ...current,
+                                            [booking.id]: { ...(current[booking.id] ?? {}), description: e.target.value }
+                                          }))
+                                        }
+                                        placeholder={`${booking.service} — ${booking.date}`}
+                                        className="field-input mt-1 w-full"
+                                      />
+                                    </label>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleCreateInvoice(booking.id)}
+                                    disabled={invoiceCreatingId === booking.id}
+                                    className="rounded-full bg-[#6f8a67] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#4c6247] disabled:opacity-60"
+                                  >
+                                    {invoiceCreatingId === booking.id ? "Creating invoice..." : "Create and send invoice"}
+                                  </button>
+                                </div>
+                              )}
                             </div>
 
                             <div className="rounded-3xl bg-mist p-5 sm:p-6">

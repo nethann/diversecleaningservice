@@ -30,7 +30,11 @@ function mapBookingRow(row) {
     recurring: row.recurring,
     status: row.status,
     createdAt: row.createdAt,
-    selectedAddons: row.selectedAddons ?? []
+    selectedAddons: row.selectedAddons ?? [],
+    stripeInvoiceId: row.stripeInvoiceId ?? null,
+    stripePaymentUrl: row.stripePaymentUrl ?? null,
+    paymentStatus: row.paymentStatus ?? "none",
+    paymentAmount: row.paymentAmount ?? null
   };
 }
 
@@ -48,6 +52,22 @@ async function ensureBookingSchemaUpdates() {
         await client.query(`
           ALTER TABLE bookings
           ADD COLUMN IF NOT EXISTS internal_notes TEXT NOT NULL DEFAULT ''
+        `);
+        await client.query(`
+          ALTER TABLE bookings
+          ADD COLUMN IF NOT EXISTS stripe_invoice_id TEXT
+        `);
+        await client.query(`
+          ALTER TABLE bookings
+          ADD COLUMN IF NOT EXISTS stripe_payment_url TEXT
+        `);
+        await client.query(`
+          ALTER TABLE bookings
+          ADD COLUMN IF NOT EXISTS payment_status TEXT NOT NULL DEFAULT 'none'
+        `);
+        await client.query(`
+          ALTER TABLE bookings
+          ADD COLUMN IF NOT EXISTS payment_amount INTEGER
         `);
         await client.query(`
           UPDATE bookings
@@ -193,6 +213,10 @@ export async function listBookings() {
         b.recurring_frequency AS "recurring",
         b.status,
         b.created_at AS "createdAt",
+        b.stripe_invoice_id AS "stripeInvoiceId",
+        b.stripe_payment_url AS "stripePaymentUrl",
+        b.payment_status AS "paymentStatus",
+        b.payment_amount AS "paymentAmount",
         COALESCE(
           json_agg(
             json_build_object(
@@ -306,6 +330,54 @@ export async function updateBookingStatus(id, status, assignedCleaners, internal
     booking: mapBookingRow(result.rows[0]),
     status: 200
   };
+}
+
+export async function updateBookingPayment(id, { stripeInvoiceId, stripePaymentUrl, paymentAmount }) {
+  const result = await query(
+    `
+      UPDATE bookings
+      SET stripe_invoice_id = $2,
+          stripe_payment_url = $3,
+          payment_amount = $4,
+          payment_status = 'unpaid'
+      WHERE id = $1
+      RETURNING
+        id, stripe_invoice_id AS "stripeInvoiceId",
+        stripe_payment_url AS "stripePaymentUrl",
+        payment_amount AS "paymentAmount",
+        payment_status AS "paymentStatus"
+    `,
+    [id, stripeInvoiceId, stripePaymentUrl, paymentAmount]
+  );
+
+  if (!result.rowCount) {
+    return { error: "Booking not found.", status: 404 };
+  }
+
+  return { booking: result.rows[0], status: 200 };
+}
+
+export async function updateBookingPaymentStatus(stripeInvoiceId, paymentStatus) {
+  const allowedStatuses = new Set(["unpaid", "paid", "failed"]);
+  if (!allowedStatuses.has(paymentStatus)) {
+    return { error: "Invalid payment status.", status: 400 };
+  }
+
+  const result = await query(
+    `
+      UPDATE bookings
+      SET payment_status = $2
+      WHERE stripe_invoice_id = $1
+      RETURNING id, payment_status AS "paymentStatus"
+    `,
+    [stripeInvoiceId, paymentStatus]
+  );
+
+  if (!result.rowCount) {
+    return { error: "Booking not found.", status: 404 };
+  }
+
+  return { booking: result.rows[0], status: 200 };
 }
 
 function validateBookingPayload(payload) {
