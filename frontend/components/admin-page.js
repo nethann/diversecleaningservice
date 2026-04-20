@@ -68,6 +68,7 @@ export function AdminPage({ adminUser }) {
   const [availabilitySaving, setAvailabilitySaving] = useState(false);
   const [availabilityMessage, setAvailabilityMessage] = useState("");
   const [availabilityModalOpen, setAvailabilityModalOpen] = useState(false);
+  const [teamCoverageOpen, setTeamCoverageOpen] = useState(false);
 
   function getBookingAssignmentIds(booking) {
     const lockedStatuses = new Set(["assigned", "completed", "in_progress"]);
@@ -521,13 +522,23 @@ export function AdminPage({ adminUser }) {
               </div>
           </section>
 
-          <section className="glass rounded-[2rem] p-7 sm:p-8">
-            <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-              <h2 className="text-2xl font-semibold text-slate-950">Team coverage</h2>
-              <span className="rounded-full bg-brand-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">
-                Shared weekly schedule
+          <section className="glass overflow-hidden rounded-[2rem]">
+            <button
+              type="button"
+              onClick={() => setTeamCoverageOpen((current) => !current)}
+              className="flex w-full items-center justify-between gap-4 px-7 py-7 text-left transition hover:bg-slate-50/50 sm:px-8"
+            >
+              <div>
+                <h2 className="text-2xl font-semibold text-slate-950">Team coverage</h2>
+                <div className="mt-1 text-sm text-slate-500">Shared weekly schedule for the admin team.</div>
+              </div>
+              <span className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">
+                <span>{teamCoverageOpen ? "Hide team coverage" : "Show team coverage"}</span>
+                <span className="text-[10px]">{teamCoverageOpen ? "v" : ">"}</span>
               </span>
-            </div>
+            </button>
+            {teamCoverageOpen ? (
+            <div className="border-t border-slate-200 px-7 pb-7 pt-6 sm:px-8 sm:pb-8">
             <div className="grid gap-4 lg:grid-cols-3">
                 {teamMembers.map((member) => (
                   <div key={member.id} className="rounded-3xl border border-slate-200 bg-white p-5">
@@ -551,6 +562,8 @@ export function AdminPage({ adminUser }) {
                   </div>
                 ))}
             </div>
+            </div>
+            ) : null}
           </section>
         </div>
       </section>
