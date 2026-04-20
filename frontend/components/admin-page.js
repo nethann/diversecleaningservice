@@ -54,7 +54,14 @@ function formatListLabel(value) {
 }
 
 function formatStatusLabel(value) {
+  if (value === "confirmed") return "New";
   return value.replaceAll("_", " ");
+}
+
+function formatPhoneDisplay(phone) {
+  const digits = (phone ?? "").replace(/\D/g, "");
+  if (digits.length !== 10) return phone || "Not provided";
+  return `(${digits.slice(0, 3)})-${digits.slice(3, 6)}-${digits.slice(6)}`;
 }
 
 function toLocalDateInputValue(date) {
@@ -865,7 +872,7 @@ export function AdminPage({ adminUser }) {
                                   </div>
                                   <div>
                                     <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Phone</div>
-                                    <div className="mt-1 text-sm leading-7 text-slate-900">{booking.phone || "Not provided"}</div>
+                                    <div className="mt-1 text-sm leading-7 text-slate-900">{formatPhoneDisplay(booking.phone)}</div>
                                   </div>
                                   <div className="sm:col-span-2">
                                     <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Address</div>

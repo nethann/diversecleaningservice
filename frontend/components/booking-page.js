@@ -182,6 +182,13 @@ export function BookingPage() {
     };
   }, [form.date]);
 
+  function formatPhoneInput(raw) {
+    const digits = raw.replace(/\D/g, "").slice(0, 10);
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return `(${digits.slice(0, 3)})-${digits.slice(3)}`;
+    return `(${digits.slice(0, 3)})-${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+
   function updateField(field, value) {
     setError("");
     setForm((current) => ({ ...current, [field]: value }));
@@ -306,9 +313,10 @@ export function BookingPage() {
                 <input
                   type="tel"
                   value={form.phone}
-                  onChange={(event) => updateField("phone", event.target.value)}
+                  onChange={(event) => updateField("phone", formatPhoneInput(event.target.value))}
                   className="field-input mt-2 w-full"
-                  placeholder="(555) 123-4567"
+                  placeholder="(555)-123-4567"
+                  maxLength={14}
                 />
               </label>
 
@@ -479,11 +487,6 @@ export function BookingPage() {
             </div>
 
             {error ? <div className="mt-6 rounded-3xl border border-rose-200 bg-rose-50 px-5 py-4 text-sm text-rose-700">{error}</div> : null}
-            {submittedBooking ? (
-              <div className="mt-6 rounded-3xl border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-800">
-                Booking request received for {submittedBooking.date} at {submittedBooking.time}. Estimated range: {submittedBooking.pricing}. We will confirm final scope and any extra-charge add-ons with you directly.
-              </div>
-            ) : null}
           </form>
 
           <aside className="space-y-6">
@@ -557,6 +560,83 @@ export function BookingPage() {
           </aside>
         </ScrollReveal>
       </section>
+
+      {submittedBooking ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4 py-8">
+          <div className="w-full max-w-lg rounded-[2rem] border border-[#e6e0d3] bg-white p-7 shadow-[0_30px_90px_rgba(15,23,42,0.22)] sm:p-9">
+            <div className="flex flex-col items-center text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50">
+                <svg className="h-8 w-8 text-emerald-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+              <div className="mt-4 text-xs font-semibold uppercase tracking-[0.22em] text-brand-700">Booking received</div>
+              <h2 className="mt-2 text-2xl font-semibold text-slate-950">You are all set, {submittedBooking.customer.split(" ")[0]}!</h2>
+              <p className="mt-3 text-sm leading-7 text-slate-500">
+                We received your cleaning request and will confirm the final details with you shortly.
+              </p>
+            </div>
+
+            <div className="mt-6 space-y-3 rounded-[1.5rem] bg-mist px-5 py-5 text-sm">
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-slate-500">Booking ID</span>
+                <span className="font-mono font-semibold text-slate-900">{submittedBooking.id}</span>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-slate-500">Service</span>
+                <span className="font-medium text-slate-900">{submittedBooking.service}</span>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-slate-500">Date</span>
+                <span className="font-medium text-slate-900">
+                  {new Intl.DateTimeFormat("en-US", { month: "long", day: "numeric", year: "numeric" }).format(new Date(`${submittedBooking.date}T12:00:00`))}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-slate-500">Time</span>
+                <span className="font-medium text-slate-900">{submittedBooking.time}</span>
+              </div>
+              <div className="flex items-center justify-between gap-4">
+                <span className="text-slate-500">Estimated price</span>
+                <span className="font-semibold text-slate-900">{submittedBooking.pricing}</span>
+              </div>
+              {submittedBooking.cleaner ? (
+                <div className="flex items-center justify-between gap-4">
+                  <span className="text-slate-500">Your cleaner</span>
+                  <span className="font-medium text-slate-900">{submittedBooking.cleaner}</span>
+                </div>
+              ) : null}
+            </div>
+
+            <p className="mt-4 text-center text-xs text-slate-400">
+              A confirmation will be sent to {submittedBooking.email}
+            </p>
+
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => {
+                  setSubmittedBooking(null);
+                  setForm({
+                    fullName: "", email: "", phone: "", service: services[0].slug,
+                    homeSize: "", bathCount: "", address: "", date: initialDate,
+                    time: "", details: "", recurring: "one-time", selectedAddons: []
+                  });
+                }}
+                className="flex-1 rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                Book another
+              </button>
+              <Link
+                href="/"
+                className="flex-1 rounded-full bg-brand-600 px-5 py-3 text-center text-sm font-semibold text-white transition hover:bg-brand-700"
+              >
+                Back to home
+              </Link>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </main>
   );
 }
