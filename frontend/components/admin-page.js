@@ -14,6 +14,12 @@ const statusTone = {
   in_progress: "bg-sky-50 text-sky-700"
 };
 
+const statusOptions = [
+  { value: "assigned", label: "Assign" },
+  { value: "completed", label: "Complete" },
+  { value: "cancelled", label: "Cancel" }
+];
+
 function formatDateLabel(dateString) {
   return new Intl.DateTimeFormat("en-US", {
     month: "short",
@@ -31,6 +37,10 @@ function formatListLabel(value) {
     .split("-")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function formatStatusLabel(value) {
+  return value.replaceAll("_", " ");
 }
 
 function DetailTableRow({ label, value }) {
@@ -396,9 +406,27 @@ export function AdminPage({ adminUser }) {
                             </div>
                           </div>
                           <div>
-                            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone[booking.status] ?? "bg-slate-100 text-slate-700"}`}>
-                              {booking.status}
-                            </span>
+                            <div
+                              className={`relative inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusTone[booking.status] ?? "bg-slate-100 text-slate-700"}`}
+                            >
+                              <select
+                                value={booking.status}
+                                onChange={(event) => handleStatusUpdate(booking.id, event.target.value)}
+                                disabled={statusSavingId === booking.id}
+                                className="appearance-none bg-transparent pr-5 text-xs font-semibold capitalize text-current outline-none disabled:cursor-not-allowed"
+                                aria-label={`Update status for ${booking.customer}`}
+                              >
+                                <option value={booking.status}>{formatStatusLabel(booking.status)}</option>
+                                {statusOptions
+                                  .filter((option) => option.value !== booking.status)
+                                  .map((option) => (
+                                    <option key={option.value} value={option.value}>
+                                      {option.label}
+                                    </option>
+                                  ))}
+                              </select>
+                              <span className="pointer-events-none absolute right-3 text-[10px]">v</span>
+                            </div>
                           </div>
                           <div className="flex justify-start lg:justify-end">
                             <button
@@ -479,39 +507,6 @@ export function AdminPage({ adminUser }) {
                                   );
                                 })}
                               </div>
-                            </div>
-
-                            <div className="flex flex-wrap gap-2">
-                              {booking.status !== "assigned" ? (
-                                <button
-                                  type="button"
-                                  onClick={() => handleStatusUpdate(booking.id, "assigned")}
-                                  disabled={statusSavingId === booking.id}
-                                  className="rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 disabled:opacity-60"
-                                >
-                                  Assign
-                                </button>
-                              ) : null}
-                              {booking.status !== "completed" ? (
-                                <button
-                                  type="button"
-                                  onClick={() => handleStatusUpdate(booking.id, "completed")}
-                                  disabled={statusSavingId === booking.id}
-                                  className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-60"
-                                >
-                                  Complete
-                                </button>
-                              ) : null}
-                              {booking.status !== "cancelled" ? (
-                                <button
-                                  type="button"
-                                  onClick={() => handleStatusUpdate(booking.id, "cancelled")}
-                                  disabled={statusSavingId === booking.id}
-                                  className="rounded-full border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:opacity-60"
-                                >
-                                  Cancel
-                                </button>
-                              ) : null}
                             </div>
                           </div>
                         ) : null}
