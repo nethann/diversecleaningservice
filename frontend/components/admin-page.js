@@ -33,12 +33,14 @@ function formatListLabel(value) {
     .join(" ");
 }
 
-function DetailRow({ label, value }) {
+function DetailTableRow({ label, value }) {
   return (
-    <div className="rounded-2xl bg-mist px-4 py-4">
-      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</div>
-      <div className="mt-2 text-sm text-slate-800">{value || "Not provided"}</div>
-    </div>
+    <tr className="border-t border-[#ebe4d7] first:border-t-0">
+      <th className="w-[34%] px-4 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 sm:px-5">
+        {label}
+      </th>
+      <td className="px-4 py-4 text-sm leading-7 text-slate-800 sm:px-5">{value || "Not provided"}</td>
+    </tr>
   );
 }
 
@@ -303,22 +305,34 @@ export function AdminPage() {
 
                         {isExpanded ? (
                           <div className="mt-6 space-y-6 border-t border-slate-200 pt-6">
-                            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                              <DetailRow label="Full name" value={booking.customer} />
-                              <DetailRow label="Email" value={booking.email} />
-                              <DetailRow label="Phone" value={booking.phone} />
-                              <DetailRow label="Service type" value={booking.service} />
-                              <DetailRow label="Home size" value={formatListLabel(booking.homeSize)} />
-                              <DetailRow label="Bath count" value={formatListLabel(booking.bathCount)} />
-                              <DetailRow label="Address" value={booking.address} />
-                              <DetailRow label="Preferred date" value={formatDateLabel(booking.date)} />
-                              <DetailRow label="Recurring frequency" value={formatListLabel(booking.recurring)} />
-                              <DetailRow label="Time slot" value={booking.time} />
-                              <DetailRow
-                                label="Add-ons"
-                                value={booking.selectedAddons?.length ? booking.selectedAddons.map((addon) => addon.name).join(", ") : "None selected"}
-                              />
-                              <DetailRow label="Notes" value={booking.details || "No special notes added."} />
+                            <div className="overflow-hidden rounded-[1.75rem] border border-[#e7dcc8] bg-white shadow-[0_16px_40px_rgba(44,56,45,0.06)]">
+                              <div className="border-b border-[#ebe4d7] bg-[linear-gradient(180deg,#f7f1e4_0%,#fdfbf5_100%)] px-4 py-4 sm:px-5">
+                                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">Booking details</div>
+                                <div className="mt-1 text-sm text-slate-600">
+                                  Submitted booking information for {booking.customer}
+                                </div>
+                              </div>
+                              <div className="overflow-x-auto">
+                                <table className="w-full min-w-[640px] border-collapse">
+                                  <tbody>
+                                    <DetailTableRow label="Full name" value={booking.customer} />
+                                    <DetailTableRow label="Email" value={booking.email} />
+                                    <DetailTableRow label="Phone" value={booking.phone} />
+                                    <DetailTableRow label="Service type" value={booking.service} />
+                                    <DetailTableRow label="Home size" value={formatListLabel(booking.homeSize)} />
+                                    <DetailTableRow label="Bath count" value={formatListLabel(booking.bathCount)} />
+                                    <DetailTableRow label="Address" value={booking.address} />
+                                    <DetailTableRow label="Preferred date" value={formatDateLabel(booking.date)} />
+                                    <DetailTableRow label="Recurring frequency" value={formatListLabel(booking.recurring)} />
+                                    <DetailTableRow label="Time slot" value={booking.time} />
+                                    <DetailTableRow
+                                      label="Add-ons"
+                                      value={booking.selectedAddons?.length ? booking.selectedAddons.map((addon) => addon.name).join(", ") : "None selected"}
+                                    />
+                                    <DetailTableRow label="Notes" value={booking.details || "No special notes added."} />
+                                  </tbody>
+                                </table>
+                              </div>
                             </div>
 
                             <div className="rounded-3xl bg-mist p-5">
