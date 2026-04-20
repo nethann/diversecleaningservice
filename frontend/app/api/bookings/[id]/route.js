@@ -10,7 +10,7 @@ export async function PATCH(request, { params }) {
   }
 
   const payload = await request.json();
-  const result = await updateBookingStatus(params.id, payload.status, payload.assignedCleaners);
+  const result = await updateBookingStatus(params.id, payload.status, payload.assignedCleaners, payload.internalNotes);
 
   if (result.error) {
     return NextResponse.json({ error: result.error }, { status: result.status });

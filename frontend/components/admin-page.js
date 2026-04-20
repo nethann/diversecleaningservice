@@ -43,6 +43,86 @@ function formatStatusLabel(value) {
   return value.replaceAll("_", " ");
 }
 
+function toLocalDateInputValue(date) {
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+}
+
+function getBookingWeekday(date) {
+  return new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(new Date(`${date}T12:00:00`));
+}
+
+function getRelativeDateRange(range) {
+  const now = new Date();
+  const today = toLocalDateInputValue(now);
+
+  if (range === "today") {
+    return { start: today, end: today };
+  }
+
+  if (range === "tomorrow") {
+    const tomorrowDate = new Date(now);
+    tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+    const tomorrow = toLocalDateInputValue(tomorrowDate);
+    return { start: tomorrow, end: tomorrow };
+  }
+
+  if (range === "this-week") {
+    const startDate = new Date(now);
+    const endDate = new Date(now);
+    endDate.setDate(endDate.getDate() + 7);
+    return {
+      start: toLocalDateInputValue(startDate),
+      end: toLocalDateInputValue(endDate)
+    };
+  }
+
+  return null;
+}
+
+function getDispatchStatusKey(booking) {
+  if (booking.status === "completed") return "completed";
+  if (booking.status === "cancelled") return "cancelled";
+  if (booking.assignedCleaners?.length) return "assigned";
+  return "new";
+}
+
+function getTeamMemberStatusForBooking(member, booking, bookings) {
+  const blackoutDates = member.blackoutDates ?? [];
+  const availability = member.availability ?? [];
+  const workloadCount = bookings.filter(
+    (item) =>
+      item.id !== booking.id &&
+      item.date === booking.date &&
+      item.status !== "cancelled" &&
+      ((item.assignedCleaners ?? []).some((assigned) => assigned.id === member.id) || item.cleanerId === member.id)
+  ).length;
+
+  if (blackoutDates.includes(booking.date)) {
+    return { tone: "bg-rose-50 text-rose-700", label: "Time off", reason: "Marked unavailable for this date.", workloadCount };
+  }
+
+  const weekday = getBookingWeekday(booking.date);
+  const worksThisSlot = availability.some((entry) => entry.weekday === weekday && entry.timeSlot === booking.time);
+  if (!worksThisSlot) {
+    return { tone: "bg-slate-100 text-slate-600", label: "Unavailable", reason: "Does not cover this date and time.", workloadCount };
+  }
+
+  const conflictingBooking = bookings.find(
+    (item) =>
+      item.id !== booking.id &&
+      item.date === booking.date &&
+      item.time === booking.time &&
+      item.status !== "cancelled" &&
+      (((item.assignedCleaners ?? []).some((assigned) => assigned.id === member.id) || item.cleanerId === member.id))
+  );
+
+  if (conflictingBooking) {
+    return { tone: "bg-amber-50 text-amber-700", label: "Conflict", reason: "Already tied to another booking at this time.", workloadCount };
+  }
+
+  return { tone: "bg-emerald-50 text-emerald-700", label: "Available", reason: "Open for this booking time.", workloadCount };
+}
+
 function DetailTableRow({ label, value }) {
   return (
     <tr className="border-t border-[#ebe4d7] first:border-t-0">
@@ -65,10 +145,19 @@ export function AdminPage({ adminUser }) {
   const [assignmentSelection, setAssignmentSelection] = useState({});
   const [availabilitySelection, setAvailabilitySelection] = useState([]);
   const [availabilityDraft, setAvailabilityDraft] = useState({});
+  const [blackoutDatesSelection, setBlackoutDatesSelection] = useState([]);
+  const [blackoutDateDraft, setBlackoutDateDraft] = useState("");
   const [availabilitySaving, setAvailabilitySaving] = useState(false);
   const [availabilityMessage, setAvailabilityMessage] = useState("");
   const [availabilityModalOpen, setAvailabilityModalOpen] = useState(false);
   const [teamCoverageOpen, setTeamCoverageOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [serviceFilter, setServiceFilter] = useState("all");
+  const [dateFilter, setDateFilter] = useState("all");
+  const [specificDateFilter, setSpecificDateFilter] = useState("");
+  const [internalNotesDraft, setInternalNotesDraft] = useState({});
+  const [toast, setToast] = useState(null);
 
   function getBookingAssignmentIds(booking) {
     const lockedStatuses = new Set(["assigned", "completed", "in_progress"]);
@@ -108,8 +197,12 @@ export function AdminPage({ adminUser }) {
           );
           const currentMember = nextTeamMembers.find((member) => member.id === adminUser?.id);
           setAvailabilitySelection((currentMember?.availability ?? []).map((entry) => `${entry.weekday}|${entry.timeSlot}`));
+          setBlackoutDatesSelection(currentMember?.blackoutDates ?? []);
           setAvailabilityDraft(
             Object.fromEntries((availabilityData.weekdays ?? []).map((weekday) => [weekday, ""]))
+          );
+          setInternalNotesDraft(
+            Object.fromEntries(nextBookings.map((booking) => [booking.id, booking.internalNotes ?? ""]))
           );
         }
       } catch {
@@ -137,6 +230,35 @@ export function AdminPage({ adminUser }) {
       }),
     [bookings]
   );
+
+  const filteredBookings = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    const quickRange = getRelativeDateRange(dateFilter);
+
+    return sortedBookings.filter((booking) => {
+      const matchesQuery =
+        !query ||
+        booking.customer.toLowerCase().includes(query) ||
+        booking.email.toLowerCase().includes(query) ||
+        booking.service.toLowerCase().includes(query);
+      const matchesStatus = statusFilter === "all" || getDispatchStatusKey(booking) === statusFilter;
+      const matchesService = serviceFilter === "all" || booking.serviceSlug === serviceFilter;
+      const matchesSpecificDate = !specificDateFilter || booking.date === specificDateFilter;
+      const matchesQuickDate =
+        !quickRange || (booking.date >= quickRange.start && booking.date <= quickRange.end);
+
+      return matchesQuery && matchesStatus && matchesService && matchesSpecificDate && matchesQuickDate;
+    });
+  }, [sortedBookings, searchQuery, statusFilter, serviceFilter, dateFilter, specificDateFilter]);
+
+  useEffect(() => {
+    if (!toast) {
+      return undefined;
+    }
+
+    const timeout = setTimeout(() => setToast(null), 2800);
+    return () => clearTimeout(timeout);
+  }, [toast]);
 
   async function handleInitDatabase() {
     setInitMessage("Initializing database...");
@@ -168,11 +290,17 @@ export function AdminPage({ adminUser }) {
       );
       const currentMember = nextTeamMembers.find((member) => member.id === adminUser?.id);
       setAvailabilitySelection((currentMember?.availability ?? []).map((entry) => `${entry.weekday}|${entry.timeSlot}`));
+      setBlackoutDatesSelection(currentMember?.blackoutDates ?? []);
       setAvailabilityDraft(
         Object.fromEntries((refreshAvailabilityData.weekdays ?? []).map((weekday) => [weekday, ""]))
       );
+      setInternalNotesDraft(
+        Object.fromEntries(nextBookings.map((booking) => [booking.id, booking.internalNotes ?? ""]))
+      );
+      setToast({ tone: "success", message: "Database is ready." });
     } catch (error) {
       setInitMessage(error.message || "We couldn't initialize the database.");
+      setToast({ tone: "error", message: error.message || "We couldn't initialize the database." });
     }
   }
 
@@ -200,6 +328,10 @@ export function AdminPage({ adminUser }) {
   }
 
   async function handleStatusUpdate(id, status) {
+    if (status === "cancelled" && !window.confirm("Are you sure you want to cancel this booking?")) {
+      return;
+    }
+
     setStatusSavingId(id);
 
     const selectedIds = assignmentSelection[id] ?? [];
@@ -217,7 +349,7 @@ export function AdminPage({ adminUser }) {
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ status, assignedCleaners })
+        body: JSON.stringify({ status, assignedCleaners, internalNotes: internalNotesDraft[id] ?? "" })
       });
       const data = await response.json();
 
@@ -233,7 +365,8 @@ export function AdminPage({ adminUser }) {
                 status: data.booking.status,
                 cleaner: data.booking.cleaner,
                 cleanerId: data.booking.cleanerId,
-                assignedCleaners: data.booking.assignedCleaners
+                assignedCleaners: data.booking.assignedCleaners,
+                internalNotes: data.booking.internalNotes
               }
             : booking
         )
@@ -242,8 +375,52 @@ export function AdminPage({ adminUser }) {
         ...current,
         [id]: getBookingAssignmentIds(data.booking)
       }));
-    } catch {
-      // Keep the board stable if a status update fails.
+      setInternalNotesDraft((current) => ({
+        ...current,
+        [id]: data.booking.internalNotes ?? ""
+      }));
+      setToast({ tone: "success", message: `Booking marked ${formatStatusLabel(data.booking.status)}.` });
+    } catch (error) {
+      setToast({ tone: "error", message: error.message || "We couldn't update the booking status." });
+    } finally {
+      setStatusSavingId("");
+    }
+  }
+
+  async function handleInternalNotesSave(bookingId) {
+    setStatusSavingId(bookingId);
+
+    const booking = bookings.find((item) => item.id === bookingId);
+    const selectedIds = assignmentSelection[bookingId] ?? [];
+    const assignedCleaners = selectedIds
+      .map((memberId) => teamMembers.find((member) => member.id === memberId))
+      .filter(Boolean)
+      .map((member) => ({ id: member.id, name: member.name }));
+
+    try {
+      const response = await fetch(`/api/bookings/${bookingId}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          status: booking?.status ?? "confirmed",
+          assignedCleaners,
+          internalNotes: internalNotesDraft[bookingId] ?? ""
+        })
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "We couldn't save the internal note.");
+      }
+
+      setBookings((current) =>
+        current.map((item) => (item.id === bookingId ? { ...item, internalNotes: data.booking.internalNotes } : item))
+      );
+      setToast({ tone: "success", message: "Internal note saved." });
+    } catch (error) {
+      setToast({ tone: "error", message: error.message || "We couldn't save the internal note." });
     } finally {
       setStatusSavingId("");
     }
@@ -280,6 +457,21 @@ export function AdminPage({ adminUser }) {
     setAvailabilityMessage("");
   }
 
+  function addBlackoutDate() {
+    if (!blackoutDateDraft) {
+      return;
+    }
+
+    setBlackoutDatesSelection((current) => (current.includes(blackoutDateDraft) ? current : [...current, blackoutDateDraft].sort()));
+    setBlackoutDateDraft("");
+    setAvailabilityMessage("");
+  }
+
+  function removeBlackoutDate(dateValue) {
+    setBlackoutDatesSelection((current) => current.filter((item) => item !== dateValue));
+    setAvailabilityMessage("");
+  }
+
   async function handleAvailabilitySave() {
     setAvailabilitySaving(true);
     setAvailabilityMessage("");
@@ -295,7 +487,7 @@ export function AdminPage({ adminUser }) {
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ selectedEntries })
+        body: JSON.stringify({ selectedEntries, blackoutDates: blackoutDatesSelection })
       });
       const data = await response.json();
 
@@ -307,8 +499,10 @@ export function AdminPage({ adminUser }) {
       setAvailabilityMessage("Availability updated.");
       setAvailabilityModalOpen(false);
       setAvailabilityDraft(Object.fromEntries(weekdays.map((weekday) => [weekday, ""])));
+      setToast({ tone: "success", message: "Weekly availability updated." });
     } catch (error) {
       setAvailabilityMessage(error.message || "We couldn't save availability right now.");
+      setToast({ tone: "error", message: error.message || "We couldn't save availability right now." });
     } finally {
       setAvailabilitySaving(false);
     }
@@ -319,6 +513,18 @@ export function AdminPage({ adminUser }) {
       <SiteHeader />
 
       <section className="shell py-10">
+        {toast ? (
+          <div
+            className={`mb-6 rounded-[1.5rem] px-5 py-4 text-sm font-medium shadow-panel ${
+              toast.tone === "success"
+                ? "border border-emerald-200 bg-emerald-50 text-emerald-800"
+                : "border border-rose-200 bg-rose-50 text-rose-800"
+            }`}
+          >
+            {toast.message}
+          </div>
+        ) : null}
+
         <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
           <div>
             <Link href="/booking" className="text-sm font-medium text-brand-700">
@@ -355,7 +561,9 @@ export function AdminPage({ adminUser }) {
               onClick={() => {
                 const currentMember = teamMembers.find((member) => member.id === adminUser?.id);
                 setAvailabilitySelection((currentMember?.availability ?? []).map((entry) => `${entry.weekday}|${entry.timeSlot}`));
+                setBlackoutDatesSelection(currentMember?.blackoutDates ?? []);
                 setAvailabilityDraft(Object.fromEntries(weekdays.map((weekday) => [weekday, ""])));
+                setBlackoutDateDraft("");
                 setAvailabilityMessage("");
                 setAvailabilityModalOpen(true);
               }}
@@ -378,21 +586,91 @@ export function AdminPage({ adminUser }) {
                   </span>
                 </div>
               </div>
+              <div className="mt-6 space-y-4">
+                <div className="grid gap-3 lg:grid-cols-[1.4fr_repeat(4,minmax(0,1fr))]">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(event) => setSearchQuery(event.target.value)}
+                    placeholder="Search customer, email, or service"
+                    className="field-input w-full"
+                  />
+                  <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} className="field-input w-full">
+                    <option value="all">All statuses</option>
+                    <option value="new">New</option>
+                    <option value="assigned">Assigned</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                  <select value={serviceFilter} onChange={(event) => setServiceFilter(event.target.value)} className="field-input w-full">
+                    <option value="all">All services</option>
+                    <option value="standard-cleaning">Standard cleaning</option>
+                    <option value="deep-cleaning">Deep cleaning</option>
+                    <option value="move-in-move-out">Move-in / move-out</option>
+                    <option value="commercial-cleaning">Commercial cleaning</option>
+                  </select>
+                  <select value={dateFilter} onChange={(event) => setDateFilter(event.target.value)} className="field-input w-full">
+                    <option value="all">All dates</option>
+                    <option value="today">Today</option>
+                    <option value="tomorrow">Tomorrow</option>
+                    <option value="this-week">This week</option>
+                  </select>
+                  <input
+                    type="date"
+                    value={specificDateFilter}
+                    onChange={(event) => setSpecificDateFilter(event.target.value)}
+                    className="field-input w-full"
+                  />
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { value: "all", label: "All" },
+                    { value: "new", label: "New" },
+                    { value: "assigned", label: "Assigned" },
+                    { value: "completed", label: "Completed" },
+                    { value: "cancelled", label: "Cancelled" }
+                  ].map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      onClick={() => setStatusFilter(option.value)}
+                      className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] transition ${
+                        statusFilter === option.value
+                          ? "bg-slate-950 text-white"
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="mt-7 space-y-5">
-                {sortedBookings.length ? (
-                  sortedBookings.map((booking) => {
+                {filteredBookings.length ? (
+                  filteredBookings.map((booking) => {
                     const isExpanded = expandedBookingId === booking.id;
                     const selectedIds = assignmentSelection[booking.id] ?? [];
                     const selectedNames = selectedIds
                       .map((memberId) => teamMembers.find((member) => member.id === memberId)?.name)
                       .filter(Boolean);
+                    const dispatchState = getDispatchStatusKey(booking);
 
                     return (
-                      <div key={booking.id} className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_18px_45px_rgba(44,56,45,0.05)] sm:p-7">
+                      <div
+                        key={booking.id}
+                        className={`rounded-[2rem] border bg-white p-6 shadow-[0_18px_45px_rgba(44,56,45,0.05)] sm:p-7 ${
+                          dispatchState === "new" ? "border-amber-300 ring-1 ring-amber-100" : "border-slate-200"
+                        }`}
+                      >
                         <div className="grid gap-5 xl:grid-cols-[1.1fr_0.85fr_1fr_auto_auto] xl:items-center">
                           <div className="pr-2">
                             <div className="font-medium text-slate-950">{booking.customer}</div>
                             <div className="mt-2 text-sm leading-7 text-slate-500">{booking.service}</div>
+                            {dispatchState === "new" ? (
+                              <div className="mt-2 inline-flex rounded-full bg-amber-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-700">
+                                Unassigned
+                              </div>
+                            ) : null}
                           </div>
                           <div className="text-sm leading-7 text-slate-700">
                             <div>{formatDateLabel(booking.date)}</div>
@@ -488,7 +766,8 @@ export function AdminPage({ adminUser }) {
                               <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                               {teamMembers.map((member) => {
                                   const active = selectedIds.includes(member.id);
-                                  const disabled = !active && selectedIds.length >= 3;
+                                  const memberStatus = getTeamMemberStatusForBooking(member, booking, bookings);
+                                  const disabled = (!active && selectedIds.length >= 3) || (!active && memberStatus.label !== "Available");
 
                                   return (
                                     <button
@@ -502,11 +781,51 @@ export function AdminPage({ adminUser }) {
                                           : "border-slate-200 bg-white hover:border-brand-200 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
                                       }`}
                                     >
-                                      <div className="font-medium text-slate-900">{member.name}</div>
-                                      <div className="mt-1 text-sm text-slate-500">{member.zone}</div>
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                          <div className="font-medium text-slate-900">{member.name}</div>
+                                          <div className="mt-1 text-sm text-slate-500">{member.zone}</div>
+                                        </div>
+                                        <span className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${memberStatus.tone}`}>
+                                          {memberStatus.label}
+                                        </span>
+                                      </div>
+                                      <div className="mt-3 text-xs leading-6 text-slate-500">{memberStatus.reason}</div>
+                                      <div className="mt-2 text-xs font-medium text-slate-600">
+                                        {memberStatus.workloadCount} job{memberStatus.workloadCount === 1 ? "" : "s"} that day
+                                      </div>
                                     </button>
                                   );
                                 })}
+                              </div>
+                            </div>
+
+                            <div className="rounded-3xl bg-mist p-5 sm:p-6">
+                              <div className="font-medium text-slate-950">Internal booking notes</div>
+                              <div className="mt-1 text-sm text-slate-500">
+                                Keep dispatch notes, customer follow-up, and scheduling reminders here.
+                              </div>
+                              <textarea
+                                rows={4}
+                                value={internalNotesDraft[booking.id] ?? ""}
+                                onChange={(event) =>
+                                  setInternalNotesDraft((current) => ({
+                                    ...current,
+                                    [booking.id]: event.target.value
+                                  }))
+                                }
+                                className="field-input mt-4 w-full rounded-[1.5rem]"
+                                placeholder="Add internal admin notes"
+                              />
+                              <div className="mt-4">
+                                <button
+                                  type="button"
+                                  onClick={() => handleInternalNotesSave(booking.id)}
+                                  disabled={statusSavingId === booking.id}
+                                  className="rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:opacity-60"
+                                >
+                                  Save internal note
+                                </button>
                               </div>
                             </div>
                           </div>
@@ -516,7 +835,7 @@ export function AdminPage({ adminUser }) {
                   })
                 ) : (
                   <div className="rounded-3xl bg-mist px-5 py-6 text-center text-sm text-slate-600">
-                    No bookings yet. New requests from the booking page will appear here.
+                    No bookings matched the current filters.
                   </div>
                 )}
               </div>
@@ -555,6 +874,11 @@ export function AdminPage({ adminUser }) {
                       <div className="mt-4 text-sm text-slate-600">
                         {member.days.length ? <div>Coverage days: {member.days.join(", ")}</div> : null}
                         {member.slots.length ? <div className={member.days.length ? "mt-2" : ""}>Time slots: {member.slots.join(", ")}</div> : null}
+                        {member.blackoutDates?.length ? (
+                          <div className={member.days.length || member.slots.length ? "mt-2" : ""}>
+                            Time off dates: {member.blackoutDates.join(", ")}
+                          </div>
+                        ) : null}
                       </div>
                     ) : (
                       <div className="mt-4 min-h-[52px] rounded-2xl border border-dashed border-slate-200 bg-slate-50/60" />
@@ -637,6 +961,44 @@ export function AdminPage({ adminUser }) {
                   </div>
                 </div>
               ))}
+            </div>
+
+            <div className="mt-6 rounded-2xl bg-mist px-4 py-4">
+              <div className="text-sm font-medium text-slate-900">Time off / blackout dates</div>
+              <div className="mt-1 text-sm text-slate-500">
+                Add dates when you should not be assigned to any booking.
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <input
+                  type="date"
+                  value={blackoutDateDraft}
+                  onChange={(event) => setBlackoutDateDraft(event.target.value)}
+                  className="field-input min-w-[180px] flex-1"
+                />
+                <button
+                  type="button"
+                  onClick={addBlackoutDate}
+                  className="rounded-full border border-brand-200 bg-white px-4 py-2 text-xs font-semibold text-brand-700 transition hover:bg-brand-50"
+                >
+                  Add blackout date
+                </button>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {blackoutDatesSelection.length ? (
+                  blackoutDatesSelection.map((dateValue) => (
+                    <button
+                      key={dateValue}
+                      type="button"
+                      onClick={() => removeBlackoutDate(dateValue)}
+                      className="rounded-full border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-semibold text-rose-700 transition hover:bg-rose-100"
+                    >
+                      {dateValue} x
+                    </button>
+                  ))
+                ) : (
+                  <div className="text-xs text-slate-500">No blackout dates added yet.</div>
+                )}
+              </div>
             </div>
 
             <div className="mt-6 flex flex-wrap items-center gap-3">

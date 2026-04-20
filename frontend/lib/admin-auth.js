@@ -135,6 +135,13 @@ async function ensureAdminSchema() {
           )
         `);
         await client.query(`
+          CREATE TABLE IF NOT EXISTS admin_blackout_dates (
+            admin_user_id TEXT NOT NULL REFERENCES admin_users(id) ON DELETE CASCADE,
+            blackout_date DATE NOT NULL,
+            PRIMARY KEY (admin_user_id, blackout_date)
+          )
+        `);
+        await client.query(`
           CREATE TABLE IF NOT EXISTS admin_sessions (
             id TEXT PRIMARY KEY,
             admin_user_id TEXT NOT NULL REFERENCES admin_users(id) ON DELETE CASCADE,
@@ -255,9 +262,15 @@ export async function listAdminTeamMembers() {
             ORDER BY a.weekday, a.time_slot
           ) FILTER (WHERE a.admin_user_id IS NOT NULL),
           '[]'::json
-        ) AS availability
+        ) AS availability,
+        COALESCE(
+          json_agg(DISTINCT bd.blackout_date::text)
+          FILTER (WHERE bd.admin_user_id IS NOT NULL),
+          '[]'::json
+        ) AS "blackoutDates"
       FROM admin_users u
       LEFT JOIN admin_weekly_availability a ON a.admin_user_id = u.id
+      LEFT JOIN admin_blackout_dates bd ON bd.admin_user_id = u.id
       WHERE u.is_active = TRUE
       GROUP BY u.id
       ORDER BY u.display_name
@@ -278,12 +291,13 @@ export async function listAdminTeamMembers() {
       zone: row.zone,
       days: weekdays,
       slots: timeSlots,
-      availability
+      availability,
+      blackoutDates: (row.blackoutDates ?? []).sort()
     };
   });
 }
 
-export async function updateAdminAvailability(adminUserId, selectedEntries) {
+export async function updateAdminAvailability(adminUserId, selectedEntries, blackoutDates = []) {
   await ensureAdminUsersSeeded();
 
   const normalizedEntries = Array.from(
@@ -297,12 +311,20 @@ export async function updateAdminAvailability(adminUserId, selectedEntries) {
         .map((entry) => [`${entry.weekday}|${entry.timeSlot.toLowerCase()}`, entry])
     ).values()
   );
+  const normalizedBlackoutDates = Array.from(
+    new Set(
+      (blackoutDates ?? [])
+        .map((entry) => String(entry ?? "").trim())
+        .filter(Boolean)
+    )
+  ).sort();
 
   const client = await getPool().connect();
 
   try {
     await client.query("BEGIN");
     await client.query(`DELETE FROM admin_weekly_availability WHERE admin_user_id = $1`, [adminUserId]);
+    await client.query(`DELETE FROM admin_blackout_dates WHERE admin_user_id = $1`, [adminUserId]);
     await client.query(
       `UPDATE admin_users SET availability_configured = TRUE, updated_at = NOW() WHERE id = $1`,
       [adminUserId]
@@ -315,6 +337,16 @@ export async function updateAdminAvailability(adminUserId, selectedEntries) {
           VALUES ($1, $2, $3)
         `,
         [adminUserId, entry.weekday, entry.timeSlot]
+      );
+    }
+
+    for (const blackoutDate of normalizedBlackoutDates) {
+      await client.query(
+        `
+          INSERT INTO admin_blackout_dates (admin_user_id, blackout_date)
+          VALUES ($1, $2::date)
+        `,
+        [adminUserId, blackoutDate]
       );
     }
 

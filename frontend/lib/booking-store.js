@@ -26,6 +26,7 @@ function mapBookingRow(row) {
     assignedCleaners: row.assignedCleaners ?? [],
     address: row.address,
     details: row.details,
+    internalNotes: row.internalNotes ?? "",
     recurring: row.recurring,
     status: row.status,
     createdAt: row.createdAt,
@@ -43,6 +44,10 @@ async function ensureBookingSchemaUpdates() {
         await client.query(`
           ALTER TABLE bookings
           ADD COLUMN IF NOT EXISTS assigned_cleaners JSONB NOT NULL DEFAULT '[]'::jsonb
+        `);
+        await client.query(`
+          ALTER TABLE bookings
+          ADD COLUMN IF NOT EXISTS internal_notes TEXT NOT NULL DEFAULT ''
         `);
         await client.query(`
           UPDATE bookings
@@ -128,8 +133,11 @@ function getAvailableTeams(bookings, date, slot, teamMembers) {
   const weekday = getWeekday(date);
 
   return teamMembers.filter((member) => {
-    const worksThisSlot = member.days.includes(weekday) && member.slots.includes(slot);
-    if (!worksThisSlot) {
+    const isBlackoutDate = (member.blackoutDates ?? []).includes(date);
+    const worksThisSlot = (member.availability ?? []).some(
+      (entry) => entry.weekday === weekday && entry.timeSlot === slot
+    );
+    if (!worksThisSlot || isBlackoutDate) {
       return false;
     }
 
@@ -161,6 +169,7 @@ export async function listBookings() {
         b.assigned_cleaners AS "assignedCleaners",
         b.address,
         b.special_instructions AS "details",
+        b.internal_notes AS "internalNotes",
         b.recurring_frequency AS "recurring",
         b.status,
         b.created_at AS "createdAt",
@@ -209,7 +218,7 @@ export async function getSlotSummaries(date) {
   });
 }
 
-export async function updateBookingStatus(id, status, assignedCleaners) {
+export async function updateBookingStatus(id, status, assignedCleaners, internalNotes) {
   const allowedStatuses = new Set(["pending", "confirmed", "assigned", "in_progress", "completed", "cancelled"]);
 
   if (!allowedStatuses.has(status)) {
@@ -227,6 +236,7 @@ export async function updateBookingStatus(id, status, assignedCleaners) {
   }
 
   const primaryCleaner = normalizedAssignedCleaners?.[0];
+  const normalizedInternalNotes = typeof internalNotes === "string" ? internalNotes : null;
 
   const result = await query(
     `
@@ -235,6 +245,7 @@ export async function updateBookingStatus(id, status, assignedCleaners) {
         , cleaner_id = COALESCE($3, cleaner_id)
         , cleaner_name = COALESCE($4, cleaner_name)
         , assigned_cleaners = COALESCE($5::jsonb, assigned_cleaners)
+        , internal_notes = COALESCE($6, internal_notes)
       WHERE id = $1
       RETURNING
         id,
@@ -252,11 +263,19 @@ export async function updateBookingStatus(id, status, assignedCleaners) {
         assigned_cleaners AS "assignedCleaners",
         address,
         special_instructions AS "details",
+        internal_notes AS "internalNotes",
         recurring_frequency AS "recurring",
         status,
         created_at AS "createdAt"
     `,
-    [id, status, primaryCleaner?.id ?? null, primaryCleaner?.name ?? null, normalizedAssignedCleaners ? JSON.stringify(normalizedAssignedCleaners) : null]
+    [
+      id,
+      status,
+      primaryCleaner?.id ?? null,
+      primaryCleaner?.name ?? null,
+      normalizedAssignedCleaners ? JSON.stringify(normalizedAssignedCleaners) : null,
+      normalizedInternalNotes
+    ]
   );
 
   if (!result.rowCount) {
@@ -337,10 +356,11 @@ export async function createBooking(payload) {
           cleaner_name,
           assigned_cleaners,
           special_instructions,
+          internal_notes,
           recurring_frequency,
           status
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15, $16, 'confirmed')
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15, '', $16, 'confirmed')
       `,
       [
         nextId,
@@ -402,6 +422,7 @@ export async function createBooking(payload) {
       assignedCleaners,
       address: payload.address,
       details: payload.details ?? "",
+      internalNotes: "",
       recurring: payload.recurring ?? "one-time",
       status: "confirmed",
       selectedAddons: selectedAddons.map((addon) => ({
