@@ -45,18 +45,22 @@ export async function POST(request, { params }) {
   const invoiceDescription = description?.trim() ||
     `${booking.service} — ${booking.date} at ${booking.time}`;
 
-  await stripe.invoiceItems.create({
-    customer: customer.id,
-    amount: amountCents,
-    currency: "usd",
-    description: invoiceDescription
-  });
-
+  // Create the invoice first, then attach the item directly to it.
+  // This prevents orphaned pending items from previous failed attempts bleeding in.
   const invoice = await stripe.invoices.create({
     customer: customer.id,
     collection_method: "send_invoice",
     days_until_due: 7,
+    pending_invoice_items_behavior: "exclude",
     metadata: { bookingId: booking.id }
+  });
+
+  await stripe.invoiceItems.create({
+    customer: customer.id,
+    invoice: invoice.id,
+    amount: amountCents,
+    currency: "usd",
+    description: invoiceDescription
   });
 
   const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
