@@ -4,30 +4,18 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { SiteHeader } from "@/components/site-header";
 import { ScrollReveal } from "@/components/scroll-reveal";
-import { addons, initialBookings, services, team, timeSlots } from "@/components/product-data";
+import { addons, services } from "@/components/product-data";
 import { servicePages } from "@/components/service-data";
 
-const today = "2026-03-24";
-const initialDate = "2026-03-26";
+function toDateInputValue(date) {
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+}
+
+const today = toDateInputValue(new Date());
+const initialDate = toDateInputValue(new Date(Date.now() + 2 * 24 * 60 * 60 * 1000));
 
 function getWeekday(date) {
   return new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(new Date(`${date}T12:00:00`));
-}
-
-function getAvailableTeams(bookings, date, slot) {
-  const weekday = getWeekday(date);
-
-  return team.filter((member) => {
-    const worksThisSlot = member.days.includes(weekday) && member.slots.includes(slot);
-    if (!worksThisSlot) {
-      return false;
-    }
-
-    return !bookings.some(
-      (booking) =>
-        booking.date === date && booking.time === slot && booking.cleanerId === member.id && booking.status !== "cancelled"
-    );
-  });
 }
 
 function AddonIcon({ slug }) {
@@ -104,7 +92,9 @@ function getPricingMatch(serviceSlug, homeSize, bathCount) {
 }
 
 export function BookingPage() {
-  const [bookings, setBookings] = useState(initialBookings);
+  const [slotSummaries, setSlotSummaries] = useState([]);
+  const [availabilityLoading, setAvailabilityLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
     fullName: "",
     email: "",
@@ -130,15 +120,6 @@ export function BookingPage() {
     return service.slug === "commercial-cleaning-service";
   });
 
-  const slotSummaries = timeSlots.map((slot) => {
-    const availableTeams = getAvailableTeams(bookings, form.date, slot);
-    return {
-      slot,
-      availableTeams,
-      capacity: availableTeams.length,
-      isAvailable: availableTeams.length > 0
-    };
-  });
   const availableSlots = slotSummaries.filter((slot) => slot.isAvailable);
   const selectedSlot = slotSummaries.find((slot) => slot.slot === form.time);
   const suggestedCleaner = selectedSlot?.availableTeams[0] ?? null;
@@ -164,6 +145,43 @@ export function BookingPage() {
     }));
   }, [form.service]);
 
+  useEffect(() => {
+    let active = true;
+
+    async function loadAvailability() {
+      setAvailabilityLoading(true);
+
+      try {
+        const response = await fetch(`/api/availability?date=${encodeURIComponent(form.date)}`);
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || "We couldn't load availability right now.");
+        }
+
+        if (active) {
+          setSlotSummaries(data.slotSummaries ?? []);
+          setError("");
+        }
+      } catch (loadError) {
+        if (active) {
+          setSlotSummaries([]);
+          setError(loadError.message || "We couldn't load availability right now.");
+        }
+      } finally {
+        if (active) {
+          setAvailabilityLoading(false);
+        }
+      }
+    }
+
+    loadAvailability();
+
+    return () => {
+      active = false;
+    };
+  }, [form.date]);
+
   function updateField(field, value) {
     setError("");
     setForm((current) => ({ ...current, [field]: value }));
@@ -182,7 +200,7 @@ export function BookingPage() {
     });
   }
 
-  function handleSubmit(event) {
+  async function handleSubmit(event) {
     event.preventDefault();
 
     if (!form.fullName || !form.email || !form.address || !form.date || !form.time || !form.service) {
@@ -200,35 +218,36 @@ export function BookingPage() {
       return;
     }
 
-    const availableTeams = getAvailableTeams(bookings, form.date, form.time);
-    if (availableTeams.length === 0) {
-      setError("That slot was just taken. Choose another available time.");
-      return;
+    setSubmitting(true);
+
+    try {
+      const response = await fetch("/api/bookings", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(form)
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "We couldn't submit your booking right now.");
+      }
+
+      setSlotSummaries(data.slotSummaries ?? []);
+      setSubmittedBooking({
+        ...data.booking,
+        pricing: estimatedRange ?? selectedService.priceLabel,
+        notes: form.details,
+        recurring: form.recurring,
+        addons: addons.filter((addon) => form.selectedAddons.includes(addon.slug)).map((addon) => addon.name)
+      });
+      setError("");
+    } catch (submitError) {
+      setError(submitError.message || "We couldn't submit your booking right now.");
+    } finally {
+      setSubmitting(false);
     }
-
-    const assignedCleaner = availableTeams[0];
-    const booking = {
-      id: `DCS-${2400 + bookings.length + 1}`,
-      customer: form.fullName,
-      service: selectedService.name,
-      serviceSlug: selectedService.slug,
-      date: form.date,
-      time: form.time,
-      cleaner: assignedCleaner.name,
-      cleanerId: assignedCleaner.id,
-      address: form.address,
-      status: "confirmed"
-    };
-
-    setBookings((current) => [...current, booking]);
-    setSubmittedBooking({
-      ...booking,
-      pricing: estimatedRange ?? selectedService.priceLabel,
-      notes: form.details,
-      recurring: form.recurring,
-      addons: addons.filter((addon) => form.selectedAddons.includes(addon.slug)).map((addon) => addon.name)
-    });
-    setError("");
   }
 
   const showBathCount = form.service === "standard-cleaning";
@@ -366,10 +385,12 @@ export function BookingPage() {
               <div className="flex items-center justify-between gap-4">
                 <div>
                   <div className="text-sm font-medium text-slate-700">Available time slots</div>
-                  <div className="mt-1 text-sm text-slate-500">{getWeekday(form.date)} coverage updates from staff schedules.</div>
+                  <div className="mt-1 text-sm text-slate-500">
+                    {availabilityLoading ? "Checking live team coverage..." : `${getWeekday(form.date)} coverage updates from live team schedules.`}
+                  </div>
                 </div>
                 <div className="rounded-full bg-slate-100 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  {availableSlots.length} open slots
+                  {availabilityLoading ? "Loading" : `${availableSlots.length} open slots`}
                 </div>
               </div>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -380,7 +401,7 @@ export function BookingPage() {
                       key={slot.slot}
                       type="button"
                       onClick={() => slot.isAvailable && updateField("time", slot.slot)}
-                      disabled={!slot.isAvailable}
+                      disabled={!slot.isAvailable || availabilityLoading}
                       className={`rounded-3xl border px-4 py-4 text-left transition ${
                         !slot.isAvailable
                           ? "cursor-not-allowed border-rose-100 bg-rose-50 text-rose-500"
@@ -450,10 +471,10 @@ export function BookingPage() {
                 requests are finalized after a technician visit.
               </div>
               <button
-                disabled={!availableSlots.length}
+                disabled={!availableSlots.length || availabilityLoading || submitting}
                 className="rounded-full bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-slate-300"
               >
-                Submit request
+                {submitting ? "Submitting..." : "Submit request"}
               </button>
             </div>
 
