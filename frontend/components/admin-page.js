@@ -247,9 +247,8 @@ export function AdminPage() {
           </div>
         </div>
 
-        <div className="grid gap-8 xl:grid-cols-[1.25fr_0.75fr]">
-          <div className="space-y-8">
-            <section className="glass rounded-[2rem] p-8">
+        <div className="space-y-8">
+          <section className="glass rounded-[2rem] p-8 sm:p-10">
               <div className="flex items-center justify-between gap-4">
                 <h2 className="text-2xl font-semibold text-slate-950">Upcoming bookings</h2>
                 <div className="flex items-center gap-3">
@@ -259,7 +258,7 @@ export function AdminPage() {
                   </span>
                 </div>
               </div>
-              <div className="mt-6 space-y-4">
+              <div className="mt-7 space-y-5">
                 {sortedBookings.length ? (
                   sortedBookings.map((booking) => {
                     const isExpanded = expandedBookingId === booking.id;
@@ -269,17 +268,17 @@ export function AdminPage() {
                       .filter(Boolean);
 
                     return (
-                      <div key={booking.id} className="rounded-[1.75rem] border border-slate-200 bg-white p-5">
-                        <div className="grid gap-4 lg:grid-cols-[1.1fr_1fr_0.9fr_0.8fr_auto] lg:items-center">
-                          <div>
+                      <div key={booking.id} className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-[0_18px_45px_rgba(44,56,45,0.05)] sm:p-7">
+                        <div className="grid gap-5 xl:grid-cols-[1.1fr_0.85fr_1fr_auto_auto] xl:items-center">
+                          <div className="pr-2">
                             <div className="font-medium text-slate-950">{booking.customer}</div>
-                            <div className="mt-1 text-sm text-slate-500">{booking.service}</div>
+                            <div className="mt-2 text-sm leading-7 text-slate-500">{booking.service}</div>
                           </div>
-                          <div className="text-sm text-slate-700">
+                          <div className="text-sm leading-7 text-slate-700">
                             <div>{formatDateLabel(booking.date)}</div>
                             <div className="mt-1 text-slate-500">{booking.time}</div>
                           </div>
-                          <div className="text-sm text-slate-700">
+                          <div className="text-sm leading-7 text-slate-700">
                             <div className="font-medium text-slate-900">
                               {selectedNames.length ? selectedNames.join(", ") : "Not assigned yet"}
                             </div>
@@ -304,7 +303,7 @@ export function AdminPage() {
                         </div>
 
                         {isExpanded ? (
-                          <div className="mt-6 space-y-6 border-t border-slate-200 pt-6">
+                          <div className="mt-7 space-y-7 border-t border-slate-200 pt-7">
                             <div className="overflow-hidden rounded-[1.75rem] border border-[#e7dcc8] bg-white shadow-[0_16px_40px_rgba(44,56,45,0.06)]">
                               <div className="border-b border-[#ebe4d7] bg-[linear-gradient(180deg,#f7f1e4_0%,#fdfbf5_100%)] px-4 py-4 sm:px-5">
                                 <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">Booking details</div>
@@ -335,7 +334,7 @@ export function AdminPage() {
                               </div>
                             </div>
 
-                            <div className="rounded-3xl bg-mist p-5">
+                            <div className="rounded-3xl bg-mist p-5 sm:p-6">
                               <div className="flex flex-wrap items-center justify-between gap-3">
                                 <div>
                                   <div className="font-medium text-slate-950">Assign responsible team members</div>
@@ -416,13 +415,16 @@ export function AdminPage() {
                   </div>
                 )}
               </div>
-            </section>
-          </div>
+          </section>
 
-          <div className="space-y-8">
-            <section className="glass rounded-[2rem] p-8">
+          <section className="glass rounded-[2rem] p-7 sm:p-8">
+            <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
               <h2 className="text-2xl font-semibold text-slate-950">Team coverage</h2>
-              <div className="mt-6 space-y-4">
+              <span className="rounded-full bg-brand-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">
+                Support roster
+              </span>
+            </div>
+            <div className="grid gap-4 lg:grid-cols-3">
                 {team.map((member) => (
                   <div key={member.id} className="rounded-3xl border border-slate-200 bg-white p-5">
                     <div className="flex items-start justify-between gap-4">
@@ -440,9 +442,8 @@ export function AdminPage() {
                     </div>
                   </div>
                 ))}
-              </div>
-            </section>
-          </div>
+            </div>
+          </section>
         </div>
       </section>
     </main>
