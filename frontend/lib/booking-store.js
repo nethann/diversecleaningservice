@@ -2,6 +2,7 @@ import { addons, services, team, timeSlots } from "@/components/product-data";
 import { getPool, query } from "@/lib/db";
 
 let seedPromise;
+let schemaUpdatePromise;
 
 function getWeekday(date) {
   return new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(new Date(`${date}T12:00:00`));
@@ -21,6 +22,7 @@ function mapBookingRow(row) {
     time: row.time,
     cleaner: row.cleaner,
     cleanerId: row.cleanerId,
+    assignedCleaners: row.assignedCleaners ?? [],
     address: row.address,
     details: row.details,
     recurring: row.recurring,
@@ -30,9 +32,43 @@ function mapBookingRow(row) {
   };
 }
 
+async function ensureBookingSchemaUpdates() {
+  if (!schemaUpdatePromise) {
+    schemaUpdatePromise = (async () => {
+      const client = await getPool().connect();
+
+      try {
+        await client.query("BEGIN");
+        await client.query(`
+          ALTER TABLE bookings
+          ADD COLUMN IF NOT EXISTS assigned_cleaners JSONB NOT NULL DEFAULT '[]'::jsonb
+        `);
+        await client.query(`
+          UPDATE bookings
+          SET assigned_cleaners = jsonb_build_array(
+            jsonb_build_object('id', cleaner_id, 'name', cleaner_name)
+          )
+          WHERE (assigned_cleaners IS NULL OR assigned_cleaners = '[]'::jsonb)
+            AND cleaner_id IS NOT NULL
+            AND cleaner_name IS NOT NULL
+        `);
+        await client.query("COMMIT");
+      } catch (error) {
+        await client.query("ROLLBACK");
+        throw error;
+      } finally {
+        client.release();
+      }
+    })();
+  }
+
+  return schemaUpdatePromise;
+}
+
 async function ensureReferenceData() {
   if (!seedPromise) {
     seedPromise = (async () => {
+      await ensureBookingSchemaUpdates();
       const client = await getPool().connect();
 
       try {
@@ -121,6 +157,7 @@ export async function listBookings() {
         b.scheduled_time AS "time",
         b.cleaner_name AS "cleaner",
         b.cleaner_id AS "cleanerId",
+        b.assigned_cleaners AS "assignedCleaners",
         b.address,
         b.special_instructions AS "details",
         b.recurring_frequency AS "recurring",
@@ -170,17 +207,32 @@ export async function getSlotSummaries(date) {
   });
 }
 
-export async function updateBookingStatus(id, status) {
+export async function updateBookingStatus(id, status, assignedCleaners) {
   const allowedStatuses = new Set(["pending", "confirmed", "assigned", "in_progress", "completed", "cancelled"]);
 
   if (!allowedStatuses.has(status)) {
     return { error: "Invalid status.", status: 400 };
   }
 
+  const normalizedAssignedCleaners =
+    assignedCleaners?.map((item) => ({
+      id: item.id,
+      name: item.name
+    })) ?? null;
+
+  if (normalizedAssignedCleaners && normalizedAssignedCleaners.length > 3) {
+    return { error: "Only up to 3 team members can be assigned.", status: 400 };
+  }
+
+  const primaryCleaner = normalizedAssignedCleaners?.[0];
+
   const result = await query(
     `
       UPDATE bookings
       SET status = $2
+        , cleaner_id = COALESCE($3, cleaner_id)
+        , cleaner_name = COALESCE($4, cleaner_name)
+        , assigned_cleaners = COALESCE($5::jsonb, assigned_cleaners)
       WHERE id = $1
       RETURNING
         id,
@@ -195,13 +247,14 @@ export async function updateBookingStatus(id, status) {
         scheduled_time AS "time",
         cleaner_name AS "cleaner",
         cleaner_id AS "cleanerId",
+        assigned_cleaners AS "assignedCleaners",
         address,
         special_instructions AS "details",
         recurring_frequency AS "recurring",
         status,
         created_at AS "createdAt"
     `,
-    [id, status]
+    [id, status, primaryCleaner?.id ?? null, primaryCleaner?.name ?? null, normalizedAssignedCleaners ? JSON.stringify(normalizedAssignedCleaners) : null]
   );
 
   if (!result.rowCount) {
@@ -253,6 +306,12 @@ export async function createBooking(payload) {
   const assignedCleaner = availableTeams[0];
   const nextId = `DCS-${2400 + bookings.length + 1}`;
   const selectedAddons = addons.filter((addon) => (payload.selectedAddons ?? []).includes(addon.slug));
+  const assignedCleaners = [
+    {
+      id: assignedCleaner.id,
+      name: assignedCleaner.name
+    }
+  ];
   const client = await getPool().connect();
 
   try {
@@ -273,11 +332,12 @@ export async function createBooking(payload) {
           scheduled_time,
           cleaner_id,
           cleaner_name,
+          assigned_cleaners,
           special_instructions,
           recurring_frequency,
           status
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'confirmed')
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14::jsonb, $15, $16, 'confirmed')
       `,
       [
         nextId,
@@ -293,6 +353,7 @@ export async function createBooking(payload) {
         payload.time,
         assignedCleaner.id,
         assignedCleaner.name,
+        JSON.stringify(assignedCleaners),
         payload.details ?? "",
         payload.recurring ?? "one-time"
       ]
@@ -335,6 +396,7 @@ export async function createBooking(payload) {
       time: payload.time,
       cleaner: assignedCleaner.name,
       cleanerId: assignedCleaner.id,
+      assignedCleaners,
       address: payload.address,
       details: payload.details ?? "",
       recurring: payload.recurring ?? "one-time",

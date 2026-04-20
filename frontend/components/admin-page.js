@@ -10,7 +10,8 @@ const statusTone = {
   assigned: "bg-amber-50 text-amber-700",
   completed: "bg-slate-100 text-slate-700",
   cancelled: "bg-rose-50 text-rose-700",
-  pending: "bg-brand-50 text-brand-700"
+  pending: "bg-brand-50 text-brand-700",
+  in_progress: "bg-sky-50 text-sky-700"
 };
 
 function formatDateLabel(dateString) {
@@ -21,11 +22,33 @@ function formatDateLabel(dateString) {
   }).format(new Date(`${dateString}T12:00:00`));
 }
 
+function formatListLabel(value) {
+  if (!value) {
+    return "Not provided";
+  }
+
+  return value
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function DetailRow({ label, value }) {
+  return (
+    <div className="rounded-2xl bg-mist px-4 py-4">
+      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</div>
+      <div className="mt-2 text-sm text-slate-800">{value || "Not provided"}</div>
+    </div>
+  );
+}
+
 export function AdminPage() {
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusSavingId, setStatusSavingId] = useState("");
   const [initMessage, setInitMessage] = useState("");
+  const [expandedBookingId, setExpandedBookingId] = useState("");
+  const [assignmentSelection, setAssignmentSelection] = useState({});
 
   useEffect(() => {
     let active = true;
@@ -44,7 +67,19 @@ export function AdminPage() {
         }
 
         if (active) {
-          setBookings(data.bookings ?? []);
+          const nextBookings = data.bookings ?? [];
+          setBookings(nextBookings);
+          setAssignmentSelection(
+            Object.fromEntries(
+              nextBookings.map((booking) => [
+                booking.id,
+                (booking.assignedCleaners?.length ? booking.assignedCleaners : booking.cleanerId && booking.cleaner
+                  ? [{ id: booking.cleanerId, name: booking.cleaner }]
+                  : []
+                ).map((member) => member.id)
+              ])
+            )
+          );
         }
       } catch {
         // Keep the dashboard resilient even if live bookings cannot be loaded.
@@ -62,42 +97,15 @@ export function AdminPage() {
     };
   }, []);
 
-  const dashboardStats = useMemo(() => {
-    const activeBookings = bookings.filter((booking) => booking.status !== "cancelled");
-    const completedBookings = bookings.filter((booking) => booking.status === "completed");
-    const commercialRequests = bookings.filter((booking) => booking.serviceSlug === "commercial-cleaning");
-    const unassignedBookings = bookings.filter((booking) => ["confirmed", "pending"].includes(booking.status));
-
-    return [
-      {
-        label: "Live bookings",
-        value: String(bookings.length),
-        detail: bookings.length ? "Requests currently saved in Railway." : "No bookings saved yet."
-      },
-      {
-        label: "Active schedule",
-        value: String(activeBookings.length),
-        detail: activeBookings.length ? "Confirmed, assigned, or in-progress visits." : "No active visits yet."
-      },
-      {
-        label: "Unassigned",
-        value: String(unassignedBookings.length),
-        detail: unassignedBookings.length ? "Bookings still waiting on dispatch actions." : "Nothing waiting right now."
-      },
-      {
-        label: "Commercial requests",
-        value: String(commercialRequests.length),
-        detail: commercialRequests.length ? "Estimate-based commercial requests on file." : "No commercial requests yet."
-      },
-      {
-        label: "Completed",
-        value: String(completedBookings.length),
-        detail: completedBookings.length ? "Jobs marked complete in the live workflow." : "No completed visits yet."
-      }
-    ];
-  }, [bookings]);
-
-  const recentBookings = useMemo(() => bookings.slice(-5).reverse(), [bookings]);
+  const sortedBookings = useMemo(
+    () =>
+      [...bookings].sort((a, b) => {
+        const left = new Date(`${a.date} ${a.time}`);
+        const right = new Date(`${b.date} ${b.time}`);
+        return left - right;
+      }),
+    [bookings]
+  );
 
   async function handleInitDatabase() {
     setInitMessage("Initializing database...");
@@ -113,14 +121,58 @@ export function AdminPage() {
       setInitMessage("Database is ready.");
       const refresh = await fetch("/api/bookings");
       const refreshData = await refresh.json();
-      setBookings(refreshData.bookings ?? []);
+      const nextBookings = refreshData.bookings ?? [];
+      setBookings(nextBookings);
+      setAssignmentSelection(
+        Object.fromEntries(
+          nextBookings.map((booking) => [
+            booking.id,
+            (booking.assignedCleaners?.length ? booking.assignedCleaners : booking.cleanerId && booking.cleaner
+              ? [{ id: booking.cleanerId, name: booking.cleaner }]
+              : []
+            ).map((member) => member.id)
+          ])
+        )
+      );
     } catch (error) {
       setInitMessage(error.message || "We couldn't initialize the database.");
     }
   }
 
+  function handleAssignmentToggle(bookingId, memberId) {
+    setAssignmentSelection((current) => {
+      const selected = current[bookingId] ?? [];
+      const exists = selected.includes(memberId);
+
+      if (exists) {
+        return {
+          ...current,
+          [bookingId]: selected.filter((id) => id !== memberId)
+        };
+      }
+
+      if (selected.length >= 3) {
+        return current;
+      }
+
+      return {
+        ...current,
+        [bookingId]: [...selected, memberId]
+      };
+    });
+  }
+
   async function handleStatusUpdate(id, status) {
     setStatusSavingId(id);
+
+    const selectedIds = assignmentSelection[id] ?? [];
+    const assignedCleaners = selectedIds
+      .map((memberId) => team.find((member) => member.id === memberId))
+      .filter(Boolean)
+      .map((member) => ({
+        id: member.id,
+        name: member.name
+      }));
 
     try {
       const response = await fetch(`/api/bookings/${id}`, {
@@ -128,7 +180,7 @@ export function AdminPage() {
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ status })
+        body: JSON.stringify({ status, assignedCleaners })
       });
       const data = await response.json();
 
@@ -136,7 +188,23 @@ export function AdminPage() {
         throw new Error(data.error || "We couldn't update the booking status.");
       }
 
-      setBookings((current) => current.map((booking) => (booking.id === id ? { ...booking, status: data.booking.status } : booking)));
+      setBookings((current) =>
+        current.map((booking) =>
+          booking.id === id
+            ? {
+                ...booking,
+                status: data.booking.status,
+                cleaner: data.booking.cleaner,
+                cleanerId: data.booking.cleanerId,
+                assignedCleaners: data.booking.assignedCleaners
+              }
+            : booking
+        )
+      );
+      setAssignmentSelection((current) => ({
+        ...current,
+        [id]: (data.booking.assignedCleaners ?? []).map((member) => member.id)
+      }));
     } catch {
       // Keep the board stable if a status update fails.
     } finally {
@@ -156,15 +224,15 @@ export function AdminPage() {
             </Link>
             <h1 className="mt-3 text-4xl font-semibold text-slate-950">Admin scheduling and operations</h1>
             <p className="mt-3 max-w-3xl text-slate-600">
-              Review real booking requests, update statuses, and keep the live schedule honest as residential and commercial
-              inquiries come in.
+              Review each booking request, open the full details for that entry, and assign up to three team members to the
+              job when you are ready.
             </p>
           </div>
           <div className="rounded-[1.75rem] bg-slate-950 px-5 py-4 text-white shadow-panel">
             <div className="text-sm text-slate-300">Database status</div>
-            <div className="mt-2 text-3xl font-semibold">{loading ? "..." : bookings.length}</div>
+            <div className="mt-2 text-3xl font-semibold">{loading ? "..." : sortedBookings.length}</div>
             <div className="mt-1 text-sm text-slate-400">
-              {bookings.length ? "Live booking records currently loaded." : "Ready to receive the first live booking."}
+              {sortedBookings.length ? "Live booking requests currently loaded." : "Ready to receive the first live booking."}
             </div>
             <button
               type="button"
@@ -177,17 +245,7 @@ export function AdminPage() {
           </div>
         </div>
 
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-5">
-          {dashboardStats.map((item) => (
-            <div key={item.label} className="glass rounded-[2rem] p-6 shadow-panel">
-              <div className="text-sm uppercase tracking-[0.18em] text-slate-500">{item.label}</div>
-              <div className="mt-4 text-4xl font-semibold text-slate-950">{item.value}</div>
-              <div className="mt-2 text-sm text-slate-500">{item.detail}</div>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-8 grid gap-8 xl:grid-cols-[1.25fr_0.75fr]">
+        <div className="grid gap-8 xl:grid-cols-[1.25fr_0.75fr]">
           <div className="space-y-8">
             <section className="glass rounded-[2rem] p-8">
               <div className="flex items-center justify-between gap-4">
@@ -199,115 +257,148 @@ export function AdminPage() {
                   </span>
                 </div>
               </div>
-              <div className="mt-6 overflow-x-auto">
-                <table className="w-full min-w-[640px] text-left text-sm">
-                  <thead>
-                    <tr className="text-slate-500">
-                      <th className="pb-3 font-medium">Customer</th>
-                      <th className="pb-3 font-medium">Service</th>
-                      <th className="pb-3 font-medium">When</th>
-                      <th className="pb-3 font-medium">Cleaner</th>
-                      <th className="pb-3 font-medium">Pricing</th>
-                      <th className="pb-3 font-medium">Status</th>
-                      <th className="pb-3 font-medium">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {bookings.map((booking) => (
-                      <tr key={booking.id} className="border-t border-slate-200 text-slate-700">
-                        <td className="py-4">
-                          <div className="font-medium text-slate-900">{booking.customer}</div>
-                          <div className="text-xs text-slate-500">{booking.address}</div>
-                        </td>
-                        <td className="py-4">{booking.service}</td>
-                        <td className="py-4">
-                          {formatDateLabel(booking.date)} / {booking.time}
-                        </td>
-                        <td className="py-4">{booking.cleaner || "Awaiting team"}</td>
-                        <td className="py-4">{booking.serviceSlug === "commercial-cleaning" ? "On-site estimate" : "Range on pricing page"}</td>
-                        <td className="py-4">
-                          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone[booking.status] ?? "bg-slate-100 text-slate-700"}`}>
-                            {booking.status}
-                          </span>
-                        </td>
-                        <td className="py-4">
-                          <div className="flex flex-wrap gap-2">
-                            {booking.status !== "assigned" ? (
-                              <button
-                                type="button"
-                                onClick={() => handleStatusUpdate(booking.id, "assigned")}
-                                disabled={statusSavingId === booking.id}
-                                className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 disabled:opacity-60"
-                              >
-                                Assign
-                              </button>
-                            ) : null}
-                            {booking.status !== "completed" ? (
-                              <button
-                                type="button"
-                                onClick={() => handleStatusUpdate(booking.id, "completed")}
-                                disabled={statusSavingId === booking.id}
-                                className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-60"
-                              >
-                                Complete
-                              </button>
-                            ) : null}
-                            {booking.status !== "cancelled" ? (
-                              <button
-                                type="button"
-                                onClick={() => handleStatusUpdate(booking.id, "cancelled")}
-                                disabled={statusSavingId === booking.id}
-                                className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 disabled:opacity-60"
-                              >
-                                Cancel
-                              </button>
-                            ) : null}
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                    {!bookings.length ? (
-                      <tr className="border-t border-slate-200 text-slate-500">
-                        <td colSpan="7" className="py-6 text-center">
-                          No bookings yet. New requests from the booking page will appear here.
-                        </td>
-                      </tr>
-                    ) : null}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-
-            <section className="glass rounded-[2rem] p-8">
-              <div className="flex items-center justify-between gap-4">
-                <h2 className="text-2xl font-semibold text-slate-950">Recent booking activity</h2>
-                <span className="text-sm text-slate-500">{recentBookings.length} most recent</span>
-              </div>
               <div className="mt-6 space-y-4">
-                {recentBookings.length ? (
-                  recentBookings.map((booking) => (
-                    <div key={`activity-${booking.id}`} className="rounded-3xl bg-mist p-5">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
-                          <div className="font-medium text-slate-950">{booking.customer}</div>
-                          <div className="mt-1 text-sm text-slate-500">
-                            {booking.service} on {formatDateLabel(booking.date)} at {booking.time}
+                {sortedBookings.length ? (
+                  sortedBookings.map((booking) => {
+                    const isExpanded = expandedBookingId === booking.id;
+                    const selectedIds = assignmentSelection[booking.id] ?? [];
+                    const selectedNames = selectedIds
+                      .map((memberId) => team.find((member) => member.id === memberId)?.name)
+                      .filter(Boolean);
+
+                    return (
+                      <div key={booking.id} className="rounded-[1.75rem] border border-slate-200 bg-white p-5">
+                        <div className="grid gap-4 lg:grid-cols-[1.1fr_1fr_0.9fr_0.8fr_auto] lg:items-center">
+                          <div>
+                            <div className="font-medium text-slate-950">{booking.customer}</div>
+                            <div className="mt-1 text-sm text-slate-500">{booking.service}</div>
+                          </div>
+                          <div className="text-sm text-slate-700">
+                            <div>{formatDateLabel(booking.date)}</div>
+                            <div className="mt-1 text-slate-500">{booking.time}</div>
+                          </div>
+                          <div className="text-sm text-slate-700">
+                            <div className="font-medium text-slate-900">
+                              {selectedNames.length ? selectedNames.join(", ") : "Not assigned yet"}
+                            </div>
+                            <div className="mt-1 text-slate-500">
+                              {selectedNames.length ? `${selectedNames.length} team member${selectedNames.length > 1 ? "s" : ""}` : "Open booking"}
+                            </div>
+                          </div>
+                          <div>
+                            <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone[booking.status] ?? "bg-slate-100 text-slate-700"}`}>
+                              {booking.status}
+                            </span>
+                          </div>
+                          <div className="flex justify-start lg:justify-end">
+                            <button
+                              type="button"
+                              onClick={() => setExpandedBookingId(isExpanded ? "" : booking.id)}
+                              className="rounded-full border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-slate-300 hover:bg-slate-50"
+                            >
+                              {isExpanded ? "Hide details" : "View details"}
+                            </button>
                           </div>
                         </div>
-                        <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone[booking.status] ?? "bg-slate-100 text-slate-700"}`}>
-                          {booking.status}
-                        </span>
+
+                        {isExpanded ? (
+                          <div className="mt-6 space-y-6 border-t border-slate-200 pt-6">
+                            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                              <DetailRow label="Full name" value={booking.customer} />
+                              <DetailRow label="Email" value={booking.email} />
+                              <DetailRow label="Phone" value={booking.phone} />
+                              <DetailRow label="Service type" value={booking.service} />
+                              <DetailRow label="Home size" value={formatListLabel(booking.homeSize)} />
+                              <DetailRow label="Bath count" value={formatListLabel(booking.bathCount)} />
+                              <DetailRow label="Address" value={booking.address} />
+                              <DetailRow label="Preferred date" value={formatDateLabel(booking.date)} />
+                              <DetailRow label="Recurring frequency" value={formatListLabel(booking.recurring)} />
+                              <DetailRow label="Time slot" value={booking.time} />
+                              <DetailRow
+                                label="Add-ons"
+                                value={booking.selectedAddons?.length ? booking.selectedAddons.map((addon) => addon.name).join(", ") : "None selected"}
+                              />
+                              <DetailRow label="Notes" value={booking.details || "No special notes added."} />
+                            </div>
+
+                            <div className="rounded-3xl bg-mist p-5">
+                              <div className="flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                  <div className="font-medium text-slate-950">Assign responsible team members</div>
+                                  <div className="mt-1 text-sm text-slate-500">
+                                    Choose up to three people for this booking. The first selected person becomes the primary assigned cleaner.
+                                  </div>
+                                </div>
+                                <div className="rounded-full bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                  {selectedIds.length} / 3 selected
+                                </div>
+                              </div>
+
+                              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                                {team.map((member) => {
+                                  const active = selectedIds.includes(member.id);
+                                  const disabled = !active && selectedIds.length >= 3;
+
+                                  return (
+                                    <button
+                                      key={member.id}
+                                      type="button"
+                                      onClick={() => handleAssignmentToggle(booking.id, member.id)}
+                                      disabled={disabled}
+                                      className={`rounded-3xl border px-4 py-4 text-left transition ${
+                                        active
+                                          ? "border-brand-300 bg-brand-50"
+                                          : "border-slate-200 bg-white hover:border-brand-200 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+                                      }`}
+                                    >
+                                      <div className="font-medium text-slate-900">{member.name}</div>
+                                      <div className="mt-1 text-sm text-slate-500">{member.zone}</div>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                              {booking.status !== "assigned" ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleStatusUpdate(booking.id, "assigned")}
+                                  disabled={statusSavingId === booking.id}
+                                  className="rounded-full border border-amber-200 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-700 transition hover:bg-amber-100 disabled:opacity-60"
+                                >
+                                  Assign
+                                </button>
+                              ) : null}
+                              {booking.status !== "completed" ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleStatusUpdate(booking.id, "completed")}
+                                  disabled={statusSavingId === booking.id}
+                                  className="rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700 transition hover:bg-emerald-100 disabled:opacity-60"
+                                >
+                                  Complete
+                                </button>
+                              ) : null}
+                              {booking.status !== "cancelled" ? (
+                                <button
+                                  type="button"
+                                  onClick={() => handleStatusUpdate(booking.id, "cancelled")}
+                                  disabled={statusSavingId === booking.id}
+                                  className="rounded-full border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 disabled:opacity-60"
+                                >
+                                  Cancel
+                                </button>
+                              ) : null}
+                            </div>
+                          </div>
+                        ) : null}
                       </div>
-                      {booking.selectedAddons?.length ? (
-                        <div className="mt-3 text-sm text-slate-600">
-                          Add-ons: {booking.selectedAddons.map((addon) => addon.name).join(", ")}
-                        </div>
-                      ) : null}
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
-                  <div className="rounded-3xl bg-mist p-6 text-sm text-slate-600">
-                    Once someone books through the site, their request will show up here with service details and status changes.
+                  <div className="rounded-3xl bg-mist px-5 py-6 text-center text-sm text-slate-600">
+                    No bookings yet. New requests from the booking page will appear here.
                   </div>
                 )}
               </div>
@@ -335,21 +426,6 @@ export function AdminPage() {
                     </div>
                   </div>
                 ))}
-              </div>
-            </section>
-
-            <section className="glass rounded-[2rem] p-8">
-              <h2 className="text-2xl font-semibold text-slate-950">Dispatch notes</h2>
-              <div className="mt-6 space-y-4 text-sm text-slate-600">
-                <div className="rounded-3xl bg-mist p-5">
-                  The bookings table above is live. If `/api/bookings` returns an empty array, this dashboard should also stay empty.
-                </div>
-                <div className="rounded-3xl bg-mist p-5">
-                  Residential pricing follows the published ranges on the pricing page. Commercial jobs stay estimate-based until a technician walk-through is complete.
-                </div>
-                <div className="rounded-3xl bg-mist p-5">
-                  If you cancel a booking, that team slot becomes available again in the booking flow.
-                </div>
               </div>
             </section>
           </div>

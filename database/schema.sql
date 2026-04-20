@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS bookings (
   scheduled_time TEXT NOT NULL,
   cleaner_id TEXT NOT NULL,
   cleaner_name TEXT NOT NULL,
+  assigned_cleaners JSONB NOT NULL DEFAULT '[]'::jsonb,
   special_instructions TEXT,
   recurring_frequency TEXT NOT NULL DEFAULT 'one-time',
   status TEXT NOT NULL DEFAULT 'confirmed' CHECK (status IN ('pending', 'confirmed', 'assigned', 'in_progress', 'completed', 'cancelled')),
