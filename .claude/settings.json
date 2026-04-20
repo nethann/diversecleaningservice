@@ -2,7 +2,15 @@
   "permissions": {
     "allow": [
       "WebFetch(domain:openai.com)",
-      "WebFetch(domain:platform.openai.com)"
+      "WebFetch(domain:platform.openai.com)",
+      "Read(//c/c/Users/netha/Documents/Programming/ReactApps/wondacleans/frontend/**)",
+      "Bash(npm install *)",
+      "Bash(npx next *)",
+      "Bash(git add *)",
+      "Bash(git push *)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\netha\\Documents\\Programming\\ReactApps\\wondacleans\\frontend\\app\\api\\bookings\\[id]"
     ]
   }
 }
