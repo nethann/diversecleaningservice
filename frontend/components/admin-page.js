@@ -123,15 +123,15 @@ function getTeamMemberStatusForBooking(member, booking, bookings) {
   return { tone: "bg-emerald-50 text-emerald-700", label: "Available", reason: "Open for this booking time.", workloadCount };
 }
 
-function DetailTableRow({ label, value }) {
-  return (
-    <tr className="border-t border-[#ebe4d7] first:border-t-0">
-      <th className="w-[34%] px-4 py-4 text-left text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 sm:px-5">
-        {label}
-      </th>
-      <td className="px-4 py-4 text-sm leading-7 text-slate-800 sm:px-5">{value || "Not provided"}</td>
-    </tr>
-  );
+function getNoteSummary(text, fallbackLabel) {
+  const trimmed = String(text ?? "").trim();
+
+  if (!trimmed) {
+    return `No ${fallbackLabel.toLowerCase()} yet`;
+  }
+
+  const lines = trimmed.split(/\n+/).filter(Boolean).length;
+  return lines <= 1 ? "1 note" : `${lines} lines`;
 }
 
 export function AdminPage({ adminUser }) {
@@ -160,6 +160,7 @@ export function AdminPage({ adminUser }) {
   const [specificDateFilter, setSpecificDateFilter] = useState("");
   const [internalNotesDraft, setInternalNotesDraft] = useState({});
   const [toast, setToast] = useState(null);
+  const [detailPanelOpen, setDetailPanelOpen] = useState({});
 
   function getBookingAssignmentIds(booking) {
     const lockedStatuses = new Set(["assigned", "completed", "in_progress"]);
@@ -493,6 +494,16 @@ export function AdminPage({ adminUser }) {
     setAvailabilityMessage("");
   }
 
+  function toggleDetailPanel(bookingId, panelKey) {
+    setDetailPanelOpen((current) => ({
+      ...current,
+      [bookingId]: {
+        ...current[bookingId],
+        [panelKey]: !current[bookingId]?.[panelKey]
+      }
+    }));
+  }
+
   async function handleAvailabilitySave() {
     setAvailabilitySaving(true);
     setAvailabilityMessage("");
@@ -765,46 +776,132 @@ export function AdminPage({ adminUser }) {
 
                         {isExpanded ? (
                           <div className="mt-7 space-y-7 border-t border-slate-200 pt-7">
-                            <div className="overflow-hidden rounded-[1.75rem] border border-[#e7dcc8] bg-white shadow-[0_16px_40px_rgba(44,56,45,0.06)]">
-                              <div className="border-b border-[#ebe4d7] bg-[linear-gradient(180deg,#f7f1e4_0%,#fdfbf5_100%)] px-4 py-4 sm:px-5">
-                                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">Booking details</div>
-                                <div className="mt-1 text-sm text-slate-600">
-                                  Submitted booking information for {booking.customer}
+                            <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
+                              <div className="rounded-[1.75rem] border border-[#e7dcc8] bg-white p-5 shadow-[0_16px_40px_rgba(44,56,45,0.06)] sm:p-6">
+                                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">Customer</div>
+                                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                                  <div>
+                                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Name</div>
+                                    <div className="mt-1 text-sm leading-7 text-slate-900">{booking.customer}</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Phone</div>
+                                    <div className="mt-1 text-sm leading-7 text-slate-900">{booking.phone || "Not provided"}</div>
+                                  </div>
+                                  <div className="sm:col-span-2">
+                                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Address</div>
+                                    <div className="mt-1 text-sm leading-7 text-slate-900">{booking.address}</div>
+                                  </div>
+                                </div>
+
+                                <div className="mt-5 rounded-2xl bg-mist p-4">
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleDetailPanel(booking.id, "customerNotes")}
+                                    className="flex w-full items-center justify-between gap-3 text-left"
+                                  >
+                                    <div>
+                                      <div className="text-sm font-medium text-slate-950">Customer notes</div>
+                                      <div className="mt-1 text-xs text-slate-500">{getNoteSummary(booking.details, "Customer notes")}</div>
+                                    </div>
+                                    <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                      {detailPanelOpen[booking.id]?.customerNotes ? "Hide" : "View"}
+                                    </span>
+                                  </button>
+                                  {detailPanelOpen[booking.id]?.customerNotes ? (
+                                    <div className="mt-3 text-sm leading-7 text-slate-700">
+                                      {booking.details || "No customer notes added."}
+                                    </div>
+                                  ) : null}
                                 </div>
                               </div>
-                              <div className="overflow-x-auto">
-                                <table className="w-full min-w-[640px] border-collapse">
-                                  <tbody>
-                                    <DetailTableRow label="Full name" value={booking.customer} />
-                                    <DetailTableRow label="Email" value={booking.email} />
-                                    <DetailTableRow label="Phone" value={booking.phone} />
-                                    <DetailTableRow label="Service type" value={booking.service} />
-                                    <DetailTableRow label="Home size" value={formatListLabel(booking.homeSize)} />
-                                    <DetailTableRow label="Bath count" value={formatListLabel(booking.bathCount)} />
-                                    <DetailTableRow label="Address" value={booking.address} />
-                                    <DetailTableRow label="Preferred date" value={formatDateLabel(booking.date)} />
-                                    <DetailTableRow label="Recurring frequency" value={formatListLabel(booking.recurring)} />
-                                    <DetailTableRow label="Time slot" value={booking.time} />
-                                    <DetailTableRow
-                                      label="Add-ons"
-                                      value={booking.selectedAddons?.length ? booking.selectedAddons.map((addon) => addon.name).join(", ") : "None selected"}
-                                    />
-                                    <DetailTableRow label="Notes" value={booking.details || "No special notes added."} />
-                                  </tbody>
-                                </table>
+
+                              <div className="rounded-[1.75rem] border border-[#e7dcc8] bg-white p-5 shadow-[0_16px_40px_rgba(44,56,45,0.06)] sm:p-6">
+                                <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">Service</div>
+                                <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                                  <div>
+                                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Service</div>
+                                    <div className="mt-1 text-sm leading-7 text-slate-900">{booking.service}</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Date</div>
+                                    <div className="mt-1 text-sm leading-7 text-slate-900">{formatDateLabel(booking.date)}</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Time</div>
+                                    <div className="mt-1 text-sm leading-7 text-slate-900">{booking.time}</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Recurring</div>
+                                    <div className="mt-1 text-sm leading-7 text-slate-900">{formatListLabel(booking.recurring)}</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Home size</div>
+                                    <div className="mt-1 text-sm leading-7 text-slate-900">{formatListLabel(booking.homeSize)}</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Bath count</div>
+                                    <div className="mt-1 text-sm leading-7 text-slate-900">{formatListLabel(booking.bathCount)}</div>
+                                  </div>
+                                </div>
+
+                                <div className="mt-5 rounded-2xl bg-mist p-4">
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleDetailPanel(booking.id, "pricingAddons")}
+                                    className="flex w-full items-center justify-between gap-3 text-left"
+                                  >
+                                    <div>
+                                      <div className="text-sm font-medium text-slate-950">Pricing and add-ons</div>
+                                      <div className="mt-1 text-xs text-slate-500">
+                                        {booking.selectedAddons?.length
+                                          ? `${booking.selectedAddons.length} add-on${booking.selectedAddons.length > 1 ? "s" : ""}`
+                                          : "No add-ons selected"}
+                                      </div>
+                                    </div>
+                                    <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                      {detailPanelOpen[booking.id]?.pricingAddons ? "Hide" : "View"}
+                                    </span>
+                                  </button>
+                                  {detailPanelOpen[booking.id]?.pricingAddons ? (
+                                    <div className="mt-3 flex flex-wrap gap-2">
+                                      {booking.selectedAddons?.length ? (
+                                        booking.selectedAddons.map((addon) => (
+                                          <span
+                                            key={addon.slug}
+                                            className="rounded-full border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-800"
+                                          >
+                                            {addon.name}
+                                          </span>
+                                        ))
+                                      ) : (
+                                        <span className="text-sm text-slate-500">No add-ons selected.</span>
+                                      )}
+                                    </div>
+                                  ) : null}
+                                </div>
                               </div>
                             </div>
 
                             <div className="rounded-3xl bg-mist p-5 sm:p-6">
-                              <div className="flex flex-wrap items-center justify-between gap-3">
+                              <div className="flex flex-wrap items-start justify-between gap-4">
                                 <div>
-                                  <div className="font-medium text-slate-950">Assign responsible team members</div>
+                                  <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">Dispatch</div>
+                                  <div className="mt-2 text-lg font-semibold text-slate-950">Assign responsible team members</div>
                                   <div className="mt-1 text-sm text-slate-500">
-                                    Choose up to three people for this booking. The first selected person becomes the primary assigned cleaner.
+                                    Keep dispatch actions separate here. Choose up to three people for this booking.
                                   </div>
                                 </div>
-                                <div className="rounded-full bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                                  {selectedIds.length} / 3 selected
+                                <div className="space-y-2 text-right">
+                                  <div className="rounded-full bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                                    {selectedIds.length} / 3 selected
+                                  </div>
+                                  <div className="text-sm text-slate-600">
+                                    Assigned team: {selectedNames.length ? selectedNames.join(", ") : "Not assigned yet"}
+                                  </div>
+                                  <div className="text-sm text-slate-600">
+                                    Status: <span className="font-medium capitalize text-slate-900">{formatStatusLabel(booking.status)}</span>
+                                  </div>
                                 </div>
                               </div>
 
@@ -850,18 +947,35 @@ export function AdminPage({ adminUser }) {
                               <div className="mt-1 text-sm text-slate-500">
                                 Keep dispatch notes, customer follow-up, and scheduling reminders here.
                               </div>
-                              <textarea
-                                rows={4}
-                                value={internalNotesDraft[booking.id] ?? ""}
-                                onChange={(event) =>
-                                  setInternalNotesDraft((current) => ({
-                                    ...current,
-                                    [booking.id]: event.target.value
-                                  }))
-                                }
-                                className="field-input mt-4 w-full rounded-[1.5rem]"
-                                placeholder="Add internal admin notes"
-                              />
+                              <button
+                                type="button"
+                                onClick={() => toggleDetailPanel(booking.id, "internalNotes")}
+                                className="mt-4 flex w-full items-center justify-between rounded-2xl bg-white px-4 py-3 text-left"
+                              >
+                                <div>
+                                  <div className="text-sm font-medium text-slate-900">Internal notes</div>
+                                  <div className="mt-1 text-xs text-slate-500">
+                                    {getNoteSummary(internalNotesDraft[booking.id] ?? booking.internalNotes, "Internal notes")}
+                                  </div>
+                                </div>
+                                <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
+                                  {detailPanelOpen[booking.id]?.internalNotes ? "Hide" : "View"}
+                                </span>
+                              </button>
+                              {detailPanelOpen[booking.id]?.internalNotes ? (
+                                <textarea
+                                  rows={4}
+                                  value={internalNotesDraft[booking.id] ?? ""}
+                                  onChange={(event) =>
+                                    setInternalNotesDraft((current) => ({
+                                      ...current,
+                                      [booking.id]: event.target.value
+                                    }))
+                                  }
+                                  className="field-input mt-4 w-full rounded-[1.5rem]"
+                                  placeholder="Add internal admin notes"
+                                />
+                              ) : null}
                               <div className="mt-4">
                                 <button
                                   type="button"
