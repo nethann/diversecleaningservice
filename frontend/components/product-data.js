@@ -72,43 +72,33 @@ export const serviceAreas = [
 export const team = [
   {
     id: "team-1",
-    name: "Maya Thompson",
-    status: "On route",
-    zone: "Downtown",
-    rating: 4.9,
-    jobsToday: 4,
+    name: "Wonda Robinson",
+    status: "Available",
+    zone: "Atlanta Area",
+    rating: 5,
+    jobsToday: 0,
     days: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
     slots: ["8:00 AM", "10:00 AM", "12:30 PM", "3:00 PM"]
   },
   {
     id: "team-2",
-    name: "Jordan Lee",
+    name: "Nethan Nagendran",
     status: "Available",
-    zone: "Northside",
-    rating: 4.8,
-    jobsToday: 3,
+    zone: "Atlanta Area",
+    rating: 5,
+    jobsToday: 0,
     days: ["Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
     slots: ["8:00 AM", "10:00 AM", "12:30 PM", "3:00 PM", "5:30 PM"]
   },
   {
     id: "team-3",
-    name: "Sofia Patel",
-    status: "In job",
-    zone: "East Austin",
+    name: "Roshan Nagendran",
+    status: "Available",
+    zone: "Gwinnett + Atlanta",
     rating: 5,
-    jobsToday: 4,
+    jobsToday: 0,
     days: ["Monday", "Wednesday", "Thursday", "Friday", "Saturday"],
     slots: ["10:00 AM", "12:30 PM", "3:00 PM", "5:30 PM"]
-  },
-  {
-    id: "team-4",
-    name: "Nico Alvarez",
-    status: "Available",
-    zone: "Riverside",
-    rating: 4.7,
-    jobsToday: 2,
-    days: ["Monday", "Tuesday", "Wednesday", "Saturday"],
-    slots: ["8:00 AM", "10:00 AM", "3:00 PM", "5:30 PM"]
   }
 ];
 
