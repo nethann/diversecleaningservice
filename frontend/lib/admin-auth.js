@@ -126,12 +126,26 @@ async function ensureAdminSchema() {
           ALTER TABLE admin_users
           ADD COLUMN IF NOT EXISTS availability_configured BOOLEAN NOT NULL DEFAULT FALSE
         `);
+        // Migrate slot-based table to working-hours table if needed
+        await client.query(`
+          DO $$
+          BEGIN
+            IF EXISTS (
+              SELECT 1 FROM information_schema.columns
+              WHERE table_name = 'admin_weekly_availability'
+                AND column_name = 'time_slot'
+            ) THEN
+              DROP TABLE IF EXISTS admin_weekly_availability;
+            END IF;
+          END $$
+        `);
         await client.query(`
           CREATE TABLE IF NOT EXISTS admin_weekly_availability (
             admin_user_id TEXT NOT NULL REFERENCES admin_users(id) ON DELETE CASCADE,
             weekday TEXT NOT NULL,
-            time_slot TEXT NOT NULL,
-            PRIMARY KEY (admin_user_id, weekday, time_slot)
+            start_time TEXT NOT NULL,
+            end_time TEXT NOT NULL,
+            PRIMARY KEY (admin_user_id, weekday)
           )
         `);
         await client.query(`
@@ -257,9 +271,10 @@ export async function listAdminTeamMembers() {
           json_agg(
             json_build_object(
               'weekday', a.weekday,
-              'timeSlot', a.time_slot
+              'startTime', a.start_time,
+              'endTime', a.end_time
             )
-            ORDER BY a.weekday, a.time_slot
+            ORDER BY a.weekday
           ) FILTER (WHERE a.admin_user_id IS NOT NULL),
           '[]'::json
         ) AS availability,
@@ -279,18 +294,16 @@ export async function listAdminTeamMembers() {
 
   return result.rows.map((row) => {
     const availability = row.availability ?? [];
-    const weekdays = [...new Set(availability.map((entry) => entry.weekday))].sort(
-      (left, right) => WEEKDAYS.indexOf(left) - WEEKDAYS.indexOf(right)
-    );
-    const timeSlots = [...new Set(availability.map((entry) => entry.timeSlot))].sort(sortTimeSlots);
+    const days = availability
+      .map((entry) => entry.weekday)
+      .sort((left, right) => WEEKDAYS.indexOf(left) - WEEKDAYS.indexOf(right));
 
     return {
       id: row.id,
       username: row.username,
       name: row.displayName,
       zone: row.zone,
-      days: weekdays,
-      slots: timeSlots,
+      days,
       availability,
       blackoutDates: (row.blackoutDates ?? []).sort()
     };
@@ -300,17 +313,13 @@ export async function listAdminTeamMembers() {
 export async function updateAdminAvailability(adminUserId, selectedEntries, blackoutDates = []) {
   await ensureAdminUsersSeeded();
 
-  const normalizedEntries = Array.from(
-    new Map(
-      (selectedEntries ?? [])
-        .map((entry) => ({
-          weekday: entry?.weekday,
-          timeSlot: String(entry?.timeSlot ?? "").trim()
-        }))
-        .filter((entry) => WEEKDAYS.includes(entry.weekday) && entry.timeSlot)
-        .map((entry) => [`${entry.weekday}|${entry.timeSlot.toLowerCase()}`, entry])
-    ).values()
-  );
+  const normalizedEntries = (selectedEntries ?? [])
+    .filter((entry) => WEEKDAYS.includes(entry?.weekday) && entry?.startTime && entry?.endTime)
+    .map((entry) => ({
+      weekday: entry.weekday,
+      startTime: String(entry.startTime).trim(),
+      endTime: String(entry.endTime).trim()
+    }));
   const normalizedBlackoutDates = Array.from(
     new Set(
       (blackoutDates ?? [])
@@ -333,10 +342,10 @@ export async function updateAdminAvailability(adminUserId, selectedEntries, blac
     for (const entry of normalizedEntries) {
       await client.query(
         `
-          INSERT INTO admin_weekly_availability (admin_user_id, weekday, time_slot)
-          VALUES ($1, $2, $3)
+          INSERT INTO admin_weekly_availability (admin_user_id, weekday, start_time, end_time)
+          VALUES ($1, $2, $3, $4)
         `,
-        [adminUserId, entry.weekday, entry.timeSlot]
+        [adminUserId, entry.weekday, entry.startTime, entry.endTime]
       );
     }
 

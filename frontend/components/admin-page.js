@@ -102,7 +102,13 @@ function getTeamMemberStatusForBooking(member, booking, bookings) {
   }
 
   const weekday = getBookingWeekday(booking.date);
-  const worksThisSlot = availability.some((entry) => entry.weekday === weekday && entry.timeSlot === booking.time);
+  const bookingMins = parseTimeToMinutes(booking.time);
+  const worksThisSlot = availability.some((entry) => {
+    if (entry.weekday !== weekday) return false;
+    const startMins = parseTimeToMinutes(entry.startTime);
+    const endMins = parseTimeToMinutes(entry.endTime);
+    return startMins >= 0 && endMins >= 0 && bookingMins >= startMins && bookingMins <= endMins;
+  });
   if (!worksThisSlot) {
     return { tone: "bg-slate-100 text-slate-600", label: "Unavailable", reason: "Does not cover this date and time.", workloadCount };
   }
@@ -134,6 +140,40 @@ function getNoteSummary(text, fallbackLabel) {
   return lines <= 1 ? "1 note" : `${lines} lines`;
 }
 
+function parseTimeToMinutes(timeStr) {
+  if (!timeStr) return -1;
+  const match24 = timeStr.match(/^(\d{1,2}):(\d{2})$/);
+  if (match24) return parseInt(match24[1]) * 60 + parseInt(match24[2]);
+  const match12 = timeStr.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (match12) {
+    let h = parseInt(match12[1]);
+    const m = parseInt(match12[2]);
+    if (match12[3].toUpperCase() === "PM" && h !== 12) h += 12;
+    if (match12[3].toUpperCase() === "AM" && h === 12) h = 0;
+    return h * 60 + m;
+  }
+  return -1;
+}
+
+function formatTime(timeStr) {
+  if (!timeStr) return "";
+  const [h, m] = timeStr.split(":").map(Number);
+  if (isNaN(h) || isNaN(m)) return timeStr;
+  const period = h >= 12 ? "PM" : "AM";
+  const displayHour = h % 12 || 12;
+  return `${displayHour}:${String(m).padStart(2, "0")} ${period}`;
+}
+
+function buildWorkingHours(weekdayList, availability) {
+  const map = Object.fromEntries(weekdayList.map((day) => [day, { start: "", end: "" }]));
+  for (const entry of availability ?? []) {
+    if (entry.weekday && entry.startTime && entry.endTime) {
+      map[entry.weekday] = { start: entry.startTime, end: entry.endTime };
+    }
+  }
+  return map;
+}
+
 export function AdminPage({ adminUser }) {
   const [bookings, setBookings] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
@@ -143,8 +183,7 @@ export function AdminPage({ adminUser }) {
   const [initMessage, setInitMessage] = useState("");
   const [expandedBookingId, setExpandedBookingId] = useState("");
   const [assignmentSelection, setAssignmentSelection] = useState({});
-  const [availabilitySelection, setAvailabilitySelection] = useState([]);
-  const [availabilityDraft, setAvailabilityDraft] = useState({});
+  const [workingHours, setWorkingHours] = useState({});
   const [blackoutDatesSelection, setBlackoutDatesSelection] = useState([]);
   const [blackoutDateDraft, setBlackoutDateDraft] = useState("");
   const [availabilitySaving, setAvailabilitySaving] = useState(false);
@@ -199,11 +238,8 @@ export function AdminPage({ adminUser }) {
             )
           );
           const currentMember = nextTeamMembers.find((member) => member.id === adminUser?.id);
-          setAvailabilitySelection((currentMember?.availability ?? []).map((entry) => `${entry.weekday}|${entry.timeSlot}`));
+          setWorkingHours(buildWorkingHours(availabilityData.weekdays ?? [], currentMember?.availability ?? []));
           setBlackoutDatesSelection(currentMember?.blackoutDates ?? []);
-          setAvailabilityDraft(
-            Object.fromEntries((availabilityData.weekdays ?? []).map((weekday) => [weekday, ""]))
-          );
           setInternalNotesDraft(
             Object.fromEntries(nextBookings.map((booking) => [booking.id, booking.internalNotes ?? ""]))
           );
@@ -301,11 +337,8 @@ export function AdminPage({ adminUser }) {
         )
       );
       const currentMember = nextTeamMembers.find((member) => member.id === adminUser?.id);
-      setAvailabilitySelection((currentMember?.availability ?? []).map((entry) => `${entry.weekday}|${entry.timeSlot}`));
+      setWorkingHours(buildWorkingHours(refreshAvailabilityData.weekdays ?? [], currentMember?.availability ?? []));
       setBlackoutDatesSelection(currentMember?.blackoutDates ?? []);
-      setAvailabilityDraft(
-        Object.fromEntries((refreshAvailabilityData.weekdays ?? []).map((weekday) => [weekday, ""]))
-      );
       setInternalNotesDraft(
         Object.fromEntries(nextBookings.map((booking) => [booking.id, booking.internalNotes ?? ""]))
       );
@@ -448,33 +481,15 @@ export function AdminPage({ adminUser }) {
     setCancelModalBooking(null);
   }
 
-  function toggleAvailability(weekday, timeSlot) {
-    const key = `${weekday}|${timeSlot}`;
-
-    setAvailabilitySelection((current) =>
-      current.includes(key) ? current.filter((entry) => entry !== key) : [...current, key]
-    );
-    setAvailabilityMessage("");
-  }
-
-  function handleAvailabilityDraftChange(weekday, value) {
-    setAvailabilityDraft((current) => ({
-      ...current,
-      [weekday]: value
-    }));
-  }
-
-  function addAvailabilityTime(weekday) {
-    const nextTime = (availabilityDraft[weekday] ?? "").trim();
-    if (!nextTime) {
+  function handleWorkingHoursChange(weekday, field, value) {
+    if (field === "clear") {
+      setWorkingHours((current) => ({ ...current, [weekday]: { start: "", end: "" } }));
+      setAvailabilityMessage("");
       return;
     }
-
-    const key = `${weekday}|${nextTime}`;
-    setAvailabilitySelection((current) => (current.includes(key) ? current : [...current, key]));
-    setAvailabilityDraft((current) => ({
+    setWorkingHours((current) => ({
       ...current,
-      [weekday]: ""
+      [weekday]: { ...(current[weekday] ?? { start: "", end: "" }), [field]: value }
     }));
     setAvailabilityMessage("");
   }
@@ -509,10 +524,9 @@ export function AdminPage({ adminUser }) {
     setAvailabilityMessage("");
 
     try {
-      const selectedEntries = availabilitySelection.map((entry) => {
-        const [weekday, timeSlot] = entry.split("|");
-        return { weekday, timeSlot };
-      });
+      const selectedEntries = Object.entries(workingHours)
+        .filter(([, hours]) => hours.start && hours.end)
+        .map(([weekday, hours]) => ({ weekday, startTime: hours.start, endTime: hours.end }));
 
       const response = await fetch("/api/admin/availability", {
         method: "PUT",
@@ -530,7 +544,6 @@ export function AdminPage({ adminUser }) {
       setTeamMembers(data.teamMembers ?? []);
       setAvailabilityMessage("Availability updated.");
       setAvailabilityModalOpen(false);
-      setAvailabilityDraft(Object.fromEntries(weekdays.map((weekday) => [weekday, ""])));
       setToast({ tone: "success", message: "Weekly availability updated." });
     } catch (error) {
       setAvailabilityMessage(error.message || "We couldn't save availability right now.");
@@ -592,9 +605,8 @@ export function AdminPage({ adminUser }) {
               type="button"
               onClick={() => {
                 const currentMember = teamMembers.find((member) => member.id === adminUser?.id);
-                setAvailabilitySelection((currentMember?.availability ?? []).map((entry) => `${entry.weekday}|${entry.timeSlot}`));
+                setWorkingHours(buildWorkingHours(weekdays, currentMember?.availability ?? []));
                 setBlackoutDatesSelection(currentMember?.blackoutDates ?? []);
-                setAvailabilityDraft(Object.fromEntries(weekdays.map((weekday) => [weekday, ""])));
                 setBlackoutDateDraft("");
                 setAvailabilityMessage("");
                 setAvailabilityModalOpen(true);
@@ -1029,13 +1041,17 @@ export function AdminPage({ adminUser }) {
                         {member.days.length ? `${member.days.length} days available` : "Not set"}
                       </span>
                     </div>
-                    {member.days.length || member.slots.length ? (
-                      <div className="mt-4 text-sm text-slate-600">
-                        {member.days.length ? <div>Coverage days: {member.days.join(", ")}</div> : null}
-                        {member.slots.length ? <div className={member.days.length ? "mt-2" : ""}>Time slots: {member.slots.join(", ")}</div> : null}
+                    {member.availability?.length ? (
+                      <div className="mt-4 space-y-1 text-sm text-slate-600">
+                        {member.availability.map((entry) => (
+                          <div key={entry.weekday}>
+                            <span className="font-medium text-slate-800">{entry.weekday}:</span>{" "}
+                            {formatTime(entry.startTime)} – {formatTime(entry.endTime)}
+                          </div>
+                        ))}
                         {member.blackoutDates?.length ? (
-                          <div className={member.days.length || member.slots.length ? "mt-2" : ""}>
-                            Time off dates: {member.blackoutDates.join(", ")}
+                          <div className="mt-2 text-slate-500">
+                            Time off: {member.blackoutDates.join(", ")}
                           </div>
                         ) : null}
                       </div>
@@ -1072,54 +1088,61 @@ export function AdminPage({ adminUser }) {
             </div>
 
             <div className="mt-6 space-y-3">
-              {weekdays.map((weekday) => (
-                <div key={weekday} className="rounded-2xl bg-mist px-4 py-4">
-                  <div className="text-sm font-medium text-slate-900">{weekday}</div>
-                  <div className="mt-3 flex flex-wrap items-center gap-2">
-                    <input
-                      type="text"
-                      value={availabilityDraft[weekday] ?? ""}
-                      onChange={(event) => handleAvailabilityDraftChange(weekday, event.target.value)}
-                      onKeyDown={(event) => {
-                        if (event.key === "Enter") {
-                          event.preventDefault();
-                          addAvailabilityTime(weekday);
-                        }
-                      }}
-                      placeholder="Add preferred time"
-                      className="field-input min-w-[180px] flex-1"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => addAvailabilityTime(weekday)}
-                      className="rounded-full border border-brand-200 bg-white px-4 py-2 text-xs font-semibold text-brand-700 transition hover:bg-brand-50"
-                    >
-                      Add time
-                    </button>
-                  </div>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {availabilitySelection
-                      .filter((entry) => entry.startsWith(`${weekday}|`))
-                      .map((entry) => {
-                        const [, timeSlot] = entry.split("|");
-
-                        return (
-                          <button
-                            key={entry}
-                            type="button"
-                            onClick={() => toggleAvailability(weekday, timeSlot)}
-                            className="rounded-full border border-brand-300 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-800 transition hover:bg-brand-100"
-                          >
-                            {timeSlot} x
-                          </button>
-                        );
-                      })}
-                    {!availabilitySelection.some((entry) => entry.startsWith(`${weekday}|`)) ? (
-                      <div className="text-xs text-slate-500">No preferred times added yet.</div>
+              {weekdays.map((weekday) => {
+                const hours = workingHours[weekday] ?? { start: "", end: "" };
+                const isActive = Boolean(hours.start && hours.end);
+                return (
+                  <div
+                    key={weekday}
+                    className={`rounded-2xl px-4 py-4 transition ${
+                      isActive ? "border border-brand-200 bg-brand-50" : "bg-mist"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="text-sm font-medium text-slate-900">{weekday}</div>
+                      {isActive ? (
+                        <span className="text-xs font-semibold text-brand-700">
+                          {formatTime(hours.start)} – {formatTime(hours.end)}
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-400">Not working</span>
+                      )}
+                    </div>
+                    <div className="mt-3 grid grid-cols-2 gap-3">
+                      <label className="block">
+                        <span className="text-xs text-slate-500">Start time</span>
+                        <input
+                          type="time"
+                          value={hours.start}
+                          onChange={(e) => handleWorkingHoursChange(weekday, "start", e.target.value)}
+                          className="field-input mt-1 w-full"
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="text-xs text-slate-500">End time</span>
+                        <input
+                          type="time"
+                          value={hours.end}
+                          onChange={(e) => handleWorkingHoursChange(weekday, "end", e.target.value)}
+                          className="field-input mt-1 w-full"
+                        />
+                      </label>
+                    </div>
+                    {hours.start && !hours.end ? (
+                      <div className="mt-2 text-xs text-amber-600">Add an end time to activate this day.</div>
+                    ) : null}
+                    {isActive ? (
+                      <button
+                        type="button"
+                        onClick={() => handleWorkingHoursChange(weekday, "clear", "")}
+                        className="mt-3 text-xs font-semibold text-rose-600 transition hover:text-rose-800"
+                      >
+                        Clear this day
+                      </button>
                     ) : null}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="mt-6 rounded-2xl bg-mist px-4 py-4">

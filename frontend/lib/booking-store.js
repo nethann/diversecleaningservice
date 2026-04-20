@@ -129,17 +129,37 @@ async function ensureReferenceData() {
   return seedPromise;
 }
 
+function parseTimeToMinutes(timeStr) {
+  if (!timeStr) return -1;
+  // "HH:MM" 24-hour (from input[type=time])
+  const match24 = timeStr.match(/^(\d{1,2}):(\d{2})$/);
+  if (match24) return parseInt(match24[1]) * 60 + parseInt(match24[2]);
+  // "H:MM AM/PM" 12-hour (from timeSlots constant)
+  const match12 = timeStr.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (match12) {
+    let h = parseInt(match12[1]);
+    const m = parseInt(match12[2]);
+    if (match12[3].toUpperCase() === "PM" && h !== 12) h += 12;
+    if (match12[3].toUpperCase() === "AM" && h === 12) h = 0;
+    return h * 60 + m;
+  }
+  return -1;
+}
+
 function getAvailableTeams(bookings, date, slot, teamMembers) {
   const weekday = getWeekday(date);
+  const slotMins = parseTimeToMinutes(slot);
 
   return teamMembers.filter((member) => {
     const isBlackoutDate = (member.blackoutDates ?? []).includes(date);
-    const worksThisSlot = (member.availability ?? []).some(
-      (entry) => entry.weekday === weekday && entry.timeSlot === slot
-    );
-    if (!worksThisSlot || isBlackoutDate) {
-      return false;
-    }
+    const worksThisSlot = (member.availability ?? []).some((entry) => {
+      if (entry.weekday !== weekday) return false;
+      const startMins = parseTimeToMinutes(entry.startTime);
+      const endMins = parseTimeToMinutes(entry.endTime);
+      return startMins >= 0 && endMins >= 0 && slotMins >= startMins && slotMins <= endMins;
+    });
+
+    if (!worksThisSlot || isBlackoutDate) return false;
 
     return !bookings.some(
       (booking) =>
