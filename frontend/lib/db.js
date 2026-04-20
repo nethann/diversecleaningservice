@@ -54,7 +54,10 @@ export function getPool() {
   if (!pool) {
     pool = new Pool({
       connectionString,
-      ssl: getSslConfig()
+      ssl: getSslConfig(),
+      max: 5,       // cap per serverless instance; Railway default limit is 100
+      idleTimeoutMillis: 30_000,
+      connectionTimeoutMillis: 10_000
     });
   }
 

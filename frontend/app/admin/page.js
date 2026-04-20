@@ -25,8 +25,8 @@ export default async function Page() {
             {configStatus.missingUsers.length ? (
               <div className="mt-8 rounded-[1.5rem] border border-amber-200 bg-amber-50 px-5 py-5 text-sm leading-7 text-amber-800">
                 Passwords still need to be configured locally for: {configStatus.missingUsers.join(", ")}.
-                Add these env vars in [frontend/.env.local](C:/Users/netha/Documents/Programming/ReactApps/wondacleans/frontend/.env.local):
-                `ADMIN_PASSWORD_WANDA_RICHARDSON`, `ADMIN_PASSWORD_NETHAN_NAGENDRAN`, and `ADMIN_PASSWORD_ROSHAN_NAGENDRAN`.
+                Set these environment variables:
+                ADMIN_PASSWORD_WANDA_RICHARDSON, ADMIN_PASSWORD_NETHAN_NAGENDRAN, and ADMIN_PASSWORD_ROSHAN_NAGENDRAN.
               </div>
             ) : (
               <AdminLoginForm />
