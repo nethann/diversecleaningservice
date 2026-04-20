@@ -1042,14 +1042,30 @@ export function AdminPage({ adminUser }) {
                                     ${(booking.paymentAmount / 100).toFixed(2)}
                                   </div>
                                   {booking.stripePaymentUrl ? (
-                                    <a
-                                      href={booking.stripePaymentUrl}
-                                      target="_blank"
-                                      rel="noopener noreferrer"
-                                      className="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-white px-4 py-2 text-sm font-semibold text-brand-700 transition hover:bg-brand-50"
-                                    >
-                                      View invoice
-                                    </a>
+                                    <div className="space-y-2">
+                                      <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2">
+                                        <span className="flex-1 truncate text-xs text-slate-600">{booking.stripePaymentUrl}</span>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            navigator.clipboard.writeText(booking.stripePaymentUrl);
+                                            setToast({ tone: "success", message: "Payment link copied." });
+                                          }}
+                                          className="shrink-0 rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                                        >
+                                          Copy link
+                                        </button>
+                                        <a
+                                          href={booking.stripePaymentUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="shrink-0 rounded-full border border-brand-200 px-3 py-1 text-xs font-semibold text-brand-700 transition hover:bg-brand-50"
+                                        >
+                                          Open
+                                        </a>
+                                      </div>
+                                      <div className="text-xs text-slate-500">Send this link to the customer to collect payment.</div>
+                                    </div>
                                   ) : null}
                                 </div>
                               ) : (

@@ -60,7 +60,6 @@ export async function POST(request, { params }) {
   });
 
   const finalizedInvoice = await stripe.invoices.finalizeInvoice(invoice.id);
-  await stripe.invoices.sendInvoice(finalizedInvoice.id);
 
   const result = await updateBookingPayment(booking.id, {
     stripeInvoiceId: finalizedInvoice.id,
