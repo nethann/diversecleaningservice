@@ -26,8 +26,9 @@ export async function PUT(request) {
   const payload = await request.json();
   const selectedEntries = payload.selectedEntries ?? [];
   const blackoutDates = payload.blackoutDates ?? [];
+  const targetUserId = payload.targetUserId ?? session.user.id;
 
-  const teamMembers = await updateAdminAvailability(session.user.id, selectedEntries, blackoutDates);
+  const teamMembers = await updateAdminAvailability(targetUserId, selectedEntries, blackoutDates);
 
   return NextResponse.json({
     ok: true,

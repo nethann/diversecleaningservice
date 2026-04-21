@@ -210,7 +210,11 @@ export function AdminPage({ adminUser }) {
   const [availabilitySaving, setAvailabilitySaving] = useState(false);
   const [availabilityMessage, setAvailabilityMessage] = useState("");
   const [availabilityModalOpen, setAvailabilityModalOpen] = useState(false);
+  const [availabilityTarget, setAvailabilityTarget] = useState(null);
   const [teamCoverageOpen, setTeamCoverageOpen] = useState(false);
+  const [addWorkerModalOpen, setAddWorkerModalOpen] = useState(false);
+  const [newWorkerName, setNewWorkerName] = useState("");
+  const [workerSaving, setWorkerSaving] = useState(false);
   const [statusMenuOpenId, setStatusMenuOpenId] = useState("");
   const [cancelModalBooking, setCancelModalBooking] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -532,6 +536,16 @@ export function AdminPage({ adminUser }) {
     setAvailabilityMessage("");
   }
 
+  function openAvailabilityModal(member) {
+    const target = member ?? teamMembers.find((m) => m.id === adminUser?.id);
+    setAvailabilityTarget(target ?? null);
+    setWorkingHours(buildWorkingHours(weekdays, target?.availability ?? []));
+    setBlackoutDatesSelection(target?.blackoutDates ?? []);
+    setBlackoutDateDraft("");
+    setAvailabilityMessage("");
+    setAvailabilityModalOpen(true);
+  }
+
   function toggleDetailPanel(bookingId, panelKey) {
     setDetailPanelOpen((current) => ({
       ...current,
@@ -556,7 +570,7 @@ export function AdminPage({ adminUser }) {
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ selectedEntries, blackoutDates: blackoutDatesSelection })
+        body: JSON.stringify({ selectedEntries, blackoutDates: blackoutDatesSelection, targetUserId: availabilityTarget?.id })
       });
       const data = await response.json();
 
@@ -573,6 +587,40 @@ export function AdminPage({ adminUser }) {
       setToast({ tone: "error", message: error.message || "We couldn't save availability right now." });
     } finally {
       setAvailabilitySaving(false);
+    }
+  }
+
+  async function handleAddWorker() {
+    if (!newWorkerName.trim()) return;
+    setWorkerSaving(true);
+    try {
+      const response = await fetch("/api/admin/workers", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newWorkerName.trim() })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to add worker.");
+      setTeamMembers(data.teamMembers ?? []);
+      setNewWorkerName("");
+      setAddWorkerModalOpen(false);
+      setToast({ tone: "success", message: `${newWorkerName.trim()} added to the team.` });
+    } catch (error) {
+      setToast({ tone: "error", message: error.message || "Failed to add worker." });
+    } finally {
+      setWorkerSaving(false);
+    }
+  }
+
+  async function handleRemoveWorker(workerId, workerName) {
+    try {
+      const response = await fetch(`/api/admin/workers/${workerId}`, { method: "DELETE" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to remove worker.");
+      setTeamMembers(data.teamMembers ?? []);
+      setToast({ tone: "success", message: `${workerName} removed.` });
+    } catch (error) {
+      setToast({ tone: "error", message: error.message || "Failed to remove worker." });
     }
   }
 
@@ -674,17 +722,10 @@ export function AdminPage({ adminUser }) {
             </div>
             <button
               type="button"
-              onClick={() => {
-                const currentMember = teamMembers.find((member) => member.id === adminUser?.id);
-                setWorkingHours(buildWorkingHours(weekdays, currentMember?.availability ?? []));
-                setBlackoutDatesSelection(currentMember?.blackoutDates ?? []);
-                setBlackoutDateDraft("");
-                setAvailabilityMessage("");
-                setAvailabilityModalOpen(true);
-              }}
+              onClick={() => openAvailabilityModal(null)}
               className="mt-3 rounded-full border border-white/20 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
             >
-              Update weekly availability
+              Update my availability
             </button>
             {initMessage ? <div className="mt-2 text-xs text-slate-300">{initMessage}</div> : null}
           </div>
@@ -1192,25 +1233,35 @@ export function AdminPage({ adminUser }) {
             >
               <div>
                 <h2 className="text-2xl font-semibold text-slate-950">Team coverage</h2>
-                <div className="mt-1 text-sm text-slate-500">Shared weekly schedule for the admin team.</div>
+                <div className="mt-1 text-sm text-slate-500">Head admins and sub-workers — manage schedules and assignments.</div>
               </div>
               <span className="inline-flex items-center gap-2 rounded-full bg-brand-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-brand-700">
-                <span>{teamCoverageOpen ? "Hide team coverage" : "Show team coverage"}</span>
+                <span>{teamCoverageOpen ? "Hide" : "Show"}</span>
                 <span className="text-[10px]">{teamCoverageOpen ? "v" : ">"}</span>
               </span>
             </button>
             {teamCoverageOpen ? (
             <div className="border-t border-slate-200 px-7 pb-7 pt-6 sm:px-8 sm:pb-8">
-            <div className="grid gap-4 lg:grid-cols-3">
+              <div className="mb-5 flex items-center justify-between gap-4">
+                <div className="text-sm text-slate-500">{teamMembers.length} team members</div>
+                <button
+                  type="button"
+                  onClick={() => { setNewWorkerName(""); setAddWorkerModalOpen(true); }}
+                  className="rounded-full bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700"
+                >
+                  + Add sub-worker
+                </button>
+              </div>
+              <div className="grid gap-4 lg:grid-cols-3">
                 {teamMembers.map((member) => (
                   <div key={member.id} className="rounded-3xl border border-slate-200 bg-white p-5">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
                         <div className="font-medium text-slate-950">{member.name}</div>
-                        <div className="mt-1 text-sm text-slate-500">{member.zone}</div>
+                        <div className="mt-1 text-xs text-slate-500">{member.role === "worker" ? "Sub-worker" : "Head admin"}</div>
                       </div>
-                      <span className="rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">
-                        {member.days.length ? `${member.days.length} days available` : "Not set"}
+                      <span className="shrink-0 rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">
+                        {member.days.length ? `${member.days.length}d` : "Not set"}
                       </span>
                     </div>
                     {member.availability?.length ? (
@@ -1222,17 +1273,33 @@ export function AdminPage({ adminUser }) {
                           </div>
                         ))}
                         {member.blackoutDates?.length ? (
-                          <div className="mt-2 text-slate-500">
-                            Time off: {member.blackoutDates.join(", ")}
-                          </div>
+                          <div className="mt-2 text-slate-500">Time off: {member.blackoutDates.join(", ")}</div>
                         ) : null}
                       </div>
                     ) : (
-                      <div className="mt-4 min-h-[52px] rounded-2xl border border-dashed border-slate-200 bg-slate-50/60" />
+                      <div className="mt-4 min-h-[40px] rounded-2xl border border-dashed border-slate-200 bg-slate-50/60" />
                     )}
+                    <div className="mt-4 flex items-center gap-2 border-t border-slate-100 pt-4">
+                      <button
+                        type="button"
+                        onClick={() => openAvailabilityModal(member)}
+                        className="flex-1 rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                      >
+                        Edit schedule
+                      </button>
+                      {member.role === "worker" ? (
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveWorker(member.id, member.name)}
+                          className="rounded-full border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-600 transition hover:bg-rose-50"
+                        >
+                          Remove
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
                 ))}
-            </div>
+              </div>
             </div>
             ) : null}
           </section>
@@ -1245,9 +1312,13 @@ export function AdminPage({ adminUser }) {
             <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">Weekly availability</div>
-                <h3 className="mt-2 text-2xl font-semibold text-slate-950">Update your schedule</h3>
+                <h3 className="mt-2 text-2xl font-semibold text-slate-950">
+                  {availabilityTarget?.id === adminUser?.id || !availabilityTarget
+                    ? "Update your schedule"
+                    : `Update ${availabilityTarget.name}'s schedule`}
+                </h3>
                 <p className="mt-2 text-sm leading-7 text-slate-600">
-                  Choose the days and time slots you want the team to see for this week.
+                  Set the working hours for each day. Leave a day blank to mark it as unavailable.
                 </p>
               </div>
               <button
@@ -1367,6 +1438,47 @@ export function AdminPage({ adminUser }) {
               <button
                 type="button"
                 onClick={() => setAvailabilityModalOpen(false)}
+                className="rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {addWorkerModalOpen ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 py-8">
+          <div className="w-full max-w-md rounded-[2rem] border border-[#e6e0d3] bg-white p-6 shadow-[0_30px_90px_rgba(15,23,42,0.22)] sm:p-8">
+            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">Team</div>
+            <h3 className="mt-2 text-2xl font-semibold text-slate-950">Add sub-worker</h3>
+            <p className="mt-2 text-sm leading-7 text-slate-600">
+              Sub-workers appear on the dispatch board and can be assigned to bookings. They do not have admin login access.
+            </p>
+            <label className="mt-5 block">
+              <span className="text-sm font-medium text-slate-700">Full name</span>
+              <input
+                type="text"
+                value={newWorkerName}
+                onChange={(e) => setNewWorkerName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleAddWorker(); }}
+                placeholder="e.g. Marcus Johnson"
+                className="field-input mt-2 w-full"
+                autoFocus
+              />
+            </label>
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={handleAddWorker}
+                disabled={workerSaving || !newWorkerName.trim()}
+                className="rounded-full bg-[#6f8a67] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#4c6247] disabled:opacity-60"
+              >
+                {workerSaving ? "Adding..." : "Add worker"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setAddWorkerModalOpen(false)}
                 className="rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
               >
                 Cancel

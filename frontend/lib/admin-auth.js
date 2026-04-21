@@ -8,12 +8,13 @@ export const WEEKDAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday",
 
 const ADMIN_USERS = [
   {
-    username: "wanda richardson",
-    displayName: "Wanda Richardson",
-    passwordEnv: "ADMIN_PASSWORD_WANDA_RICHARDSON",
+    username: "vonda richardson",
+    displayName: "Vonda Richardson",
+    passwordEnv: "ADMIN_PASSWORD_VONDA_RICHARDSON",
+    passwordEnvLegacy: "ADMIN_PASSWORD_WANDA_RICHARDSON",
     zone: "Atlanta Area",
     legacyIds: ["team-1"],
-    legacyNames: ["Wonda Robinson", "Wanda Richardson"]
+    legacyNames: ["Wonda Robinson", "Wanda Richardson", "Vonda Richardson"]
   },
   {
     username: "nethan nagendran",
@@ -124,6 +125,10 @@ async function ensureAdminSchema() {
         `);
         await client.query(`
           ALTER TABLE admin_users
+          ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'head_admin'
+        `);
+        await client.query(`
+          ALTER TABLE admin_users
           ADD COLUMN IF NOT EXISTS availability_configured BOOLEAN NOT NULL DEFAULT FALSE
         `);
         // Migrate slot-based table to working-hours table if needed
@@ -187,23 +192,33 @@ async function ensureAdminUsersSeeded() {
         await client.query("BEGIN");
 
         for (const admin of ADMIN_USERS) {
-          const password = process.env[admin.passwordEnv];
+          const password = process.env[admin.passwordEnv] ?? (admin.passwordEnvLegacy ? process.env[admin.passwordEnvLegacy] : null);
           const passwordHash = password ? createPasswordHash(password) : null;
           const adminId = admin.username.replace(/\s+/g, "-");
 
           await client.query(
             `
-              INSERT INTO admin_users (id, username, display_name, zone, password_hash, is_active)
-              VALUES ($1, $2, $3, $4, $5, TRUE)
+              INSERT INTO admin_users (id, username, display_name, zone, password_hash, is_active, role)
+              VALUES ($1, $2, $3, $4, $5, TRUE, 'head_admin')
               ON CONFLICT (username) DO UPDATE
               SET display_name = EXCLUDED.display_name,
                   zone = EXCLUDED.zone,
                   password_hash = COALESCE(EXCLUDED.password_hash, admin_users.password_hash),
                   is_active = TRUE,
+                  role = 'head_admin',
                   updated_at = NOW()
             `,
             [adminId, normalizeUsername(admin.username), admin.displayName, admin.zone, passwordHash]
           );
+
+          // Also migrate any old username row (e.g. wanda → vonda) so the old login stops working
+          if (admin.legacyNames?.length) {
+            await client.query(
+              `UPDATE admin_users SET is_active = FALSE, updated_at = NOW()
+               WHERE username = ANY($1::text[]) AND id <> $2`,
+              [admin.legacyNames.map(normalizeUsername), adminId]
+            );
+          }
 
           const configRows = await client.query(
             `SELECT availability_configured AS "availabilityConfigured" FROM admin_users WHERE id = $1 LIMIT 1`,
@@ -251,9 +266,10 @@ async function ensureAdminUsersSeeded() {
 }
 
 export function getAdminConfigStatus() {
+  const hasPassword = (admin) => Boolean(process.env[admin.passwordEnv] ?? (admin.passwordEnvLegacy ? process.env[admin.passwordEnvLegacy] : null));
   return {
-    configuredUsers: ADMIN_USERS.filter((admin) => Boolean(process.env[admin.passwordEnv])).map((admin) => admin.displayName),
-    missingUsers: ADMIN_USERS.filter((admin) => !process.env[admin.passwordEnv]).map((admin) => admin.displayName)
+    configuredUsers: ADMIN_USERS.filter(hasPassword).map((admin) => admin.displayName),
+    missingUsers: ADMIN_USERS.filter((admin) => !hasPassword(admin)).map((admin) => admin.displayName)
   };
 }
 
@@ -267,6 +283,7 @@ export async function listAdminTeamMembers() {
         u.username,
         u.display_name AS "displayName",
         u.zone,
+        u.role,
         COALESCE(
           json_agg(
             json_build_object(
@@ -303,11 +320,42 @@ export async function listAdminTeamMembers() {
       username: row.username,
       name: row.displayName,
       zone: row.zone,
+      role: row.role ?? "head_admin",
       days,
       availability,
       blackoutDates: (row.blackoutDates ?? []).sort()
     };
   });
+}
+
+export async function createWorker(displayName) {
+  await ensureAdminUsersSeeded();
+
+  const trimmed = displayName.trim();
+  if (!trimmed) return { error: "Name is required.", status: 400 };
+
+  const id = `worker-${Date.now()}-${randomBytes(4).toString("hex")}`;
+  const username = normalizeUsername(trimmed) + "-" + id.slice(-8);
+
+  await query(
+    `INSERT INTO admin_users (id, username, display_name, zone, is_active, role)
+     VALUES ($1, $2, $3, 'Sub-worker', TRUE, 'worker')`,
+    [id, username, trimmed]
+  );
+
+  return { workerId: id };
+}
+
+export async function deleteWorker(workerId) {
+  await ensureAdminUsersSeeded();
+
+  const result = await query(
+    `DELETE FROM admin_users WHERE id = $1 AND role = 'worker' RETURNING id`,
+    [workerId]
+  );
+
+  if (!result.rowCount) return { error: "Worker not found.", status: 404 };
+  return { ok: true };
 }
 
 export async function updateAdminAvailability(adminUserId, selectedEntries, blackoutDates = []) {
