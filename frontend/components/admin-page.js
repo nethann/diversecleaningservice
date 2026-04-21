@@ -195,6 +195,55 @@ function buildWorkingHours(weekdayList, availability) {
   return map;
 }
 
+function MemberCard({ member, onEdit, onRemove }) {
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-white p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="font-medium text-slate-950">{member.name}</div>
+          <div className="mt-1 text-xs text-slate-500">{member.zone || "—"}</div>
+        </div>
+        <span className="shrink-0 rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">
+          {member.days.length ? `${member.days.length}d` : "Not set"}
+        </span>
+      </div>
+      {member.availability?.length ? (
+        <div className="mt-4 space-y-1 text-sm text-slate-600">
+          {member.availability.map((entry) => (
+            <div key={entry.weekday}>
+              <span className="font-medium text-slate-800">{entry.weekday}:</span>{" "}
+              {formatTime(entry.startTime)} – {formatTime(entry.endTime)}
+            </div>
+          ))}
+          {member.blackoutDates?.length ? (
+            <div className="mt-2 text-slate-500">Time off: {member.blackoutDates.join(", ")}</div>
+          ) : null}
+        </div>
+      ) : (
+        <div className="mt-4 min-h-[40px] rounded-2xl border border-dashed border-slate-200 bg-slate-50/60" />
+      )}
+      <div className="mt-4 flex items-center gap-2 border-t border-slate-100 pt-4">
+        <button
+          type="button"
+          onClick={onEdit}
+          className="flex-1 rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+        >
+          Edit schedule
+        </button>
+        {onRemove ? (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="rounded-full border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-600 transition hover:bg-rose-50"
+          >
+            Remove
+          </button>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export function AdminPage({ adminUser }) {
   const [bookings, setBookings] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
@@ -1252,54 +1301,42 @@ export function AdminPage({ adminUser }) {
                   + Add sub-worker
                 </button>
               </div>
-              <div className="grid gap-4 lg:grid-cols-3">
-                {teamMembers.map((member) => (
-                  <div key={member.id} className="rounded-3xl border border-slate-200 bg-white p-5">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="font-medium text-slate-950">{member.name}</div>
-                        <div className="mt-1 text-xs text-slate-500">{member.role === "worker" ? "Sub-worker" : "Head admin"}</div>
-                      </div>
-                      <span className="shrink-0 rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">
-                        {member.days.length ? `${member.days.length}d` : "Not set"}
-                      </span>
-                    </div>
-                    {member.availability?.length ? (
-                      <div className="mt-4 space-y-1 text-sm text-slate-600">
-                        {member.availability.map((entry) => (
-                          <div key={entry.weekday}>
-                            <span className="font-medium text-slate-800">{entry.weekday}:</span>{" "}
-                            {formatTime(entry.startTime)} – {formatTime(entry.endTime)}
-                          </div>
-                        ))}
-                        {member.blackoutDates?.length ? (
-                          <div className="mt-2 text-slate-500">Time off: {member.blackoutDates.join(", ")}</div>
-                        ) : null}
-                      </div>
-                    ) : (
-                      <div className="mt-4 min-h-[40px] rounded-2xl border border-dashed border-slate-200 bg-slate-50/60" />
-                    )}
-                    <div className="mt-4 flex items-center gap-2 border-t border-slate-100 pt-4">
-                      <button
-                        type="button"
-                        onClick={() => openAvailabilityModal(member)}
-                        className="flex-1 rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
-                      >
-                        Edit schedule
-                      </button>
-                      {member.role === "worker" ? (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveWorker(member.id, member.name)}
-                          className="rounded-full border border-rose-200 px-3 py-2 text-xs font-semibold text-rose-600 transition hover:bg-rose-50"
-                        >
-                          Remove
-                        </button>
-                      ) : null}
-                    </div>
-                  </div>
-                ))}
+              <div>
+                <div className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Head admins</div>
+                <div className="grid gap-4 lg:grid-cols-3">
+                  {teamMembers.filter((m) => m.role !== "worker").map((member) => (
+                    <MemberCard
+                      key={member.id}
+                      member={member}
+                      onEdit={() => openAvailabilityModal(member)}
+                      onRemove={null}
+                    />
+                  ))}
+                </div>
               </div>
+
+              {teamMembers.some((m) => m.role === "worker") ? (
+                <div className="mt-7">
+                  <div className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Sub-workers</div>
+                  <div className="grid gap-4 lg:grid-cols-3">
+                    {teamMembers.filter((m) => m.role === "worker").map((member) => (
+                      <MemberCard
+                        key={member.id}
+                        member={member}
+                        onEdit={() => openAvailabilityModal(member)}
+                        onRemove={() => handleRemoveWorker(member.id, member.name)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="mt-7">
+                  <div className="mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Sub-workers</div>
+                  <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/60 px-5 py-6 text-center text-sm text-slate-400">
+                    No sub-workers yet. Click &ldquo;+ Add sub-worker&rdquo; to create one.
+                  </div>
+                </div>
+              )}
             </div>
             ) : null}
           </section>

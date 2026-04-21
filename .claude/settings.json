@@ -10,7 +10,8 @@
       "Bash(git push *)"
     ],
     "additionalDirectories": [
-      "C:\\Users\\netha\\Documents\\Programming\\ReactApps\\wondacleans\\frontend\\app\\api\\bookings\\[id]"
+      "C:\\Users\\netha\\Documents\\Programming\\ReactApps\\wondacleans\\frontend\\app\\api\\bookings\\[id]",
+      "C:\\Users\\netha\\Documents\\Programming\\ReactApps\\wondacleans\\frontend\\app\\api\\admin\\workers"
     ]
   }
 }
