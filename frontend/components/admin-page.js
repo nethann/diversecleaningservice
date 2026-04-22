@@ -124,6 +124,10 @@ function getTeamMemberStatusForBooking(member, booking, bookings) {
 
   const weekday = getBookingWeekday(booking.date);
   const bookingMins = parseTimeToMinutes(booking.time);
+  if (!availability.length) {
+    return { tone: "bg-slate-100 text-slate-600", label: "Not set", reason: "Weekly availability has not been configured yet.", workloadCount };
+  }
+
   const worksThisSlot = availability.some((entry) => {
     if (entry.weekday !== weekday) return false;
     const startMins = parseTimeToMinutes(entry.startTime);
@@ -131,7 +135,7 @@ function getTeamMemberStatusForBooking(member, booking, bookings) {
     return startMins >= 0 && endMins >= 0 && bookingMins >= startMins && bookingMins <= endMins;
   });
   if (!worksThisSlot) {
-    return { tone: "bg-slate-100 text-slate-600", label: "Unavailable", reason: "Does not cover this date and time.", workloadCount };
+    return { tone: "bg-amber-50 text-amber-700", label: "Outside hours", reason: "This time is outside their saved availability.", workloadCount };
   }
 
   const conflictingBooking = bookings.find(
@@ -195,12 +199,13 @@ function buildWorkingHours(weekdayList, availability) {
   return map;
 }
 
-function MemberCard({ member, onEdit, onRemove }) {
+function MemberCard({ member, onEdit, onEmailEdit, onRemove }) {
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="font-medium text-slate-950">{member.name}</div>
+          <div className="mt-1 text-xs text-slate-400">{member.email || "No email on file"}</div>
           <div className="mt-1 text-xs text-slate-500">{member.zone || "—"}</div>
         </div>
         <span className="shrink-0 rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">
@@ -223,6 +228,13 @@ function MemberCard({ member, onEdit, onRemove }) {
         <div className="mt-4 min-h-[40px] rounded-2xl border border-dashed border-slate-200 bg-slate-50/60" />
       )}
       <div className="mt-4 flex items-center gap-2 border-t border-slate-100 pt-4">
+        <button
+          type="button"
+          onClick={onEmailEdit}
+          className="flex-1 rounded-full border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+        >
+          Edit email
+        </button>
         <button
           type="button"
           onClick={onEdit}
@@ -250,6 +262,7 @@ export function AdminPage({ adminUser }) {
   const [weekdays, setWeekdays] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusSavingId, setStatusSavingId] = useState("");
+  const [emailSavingId, setEmailSavingId] = useState("");
   const [initMessage, setInitMessage] = useState("");
   const [expandedBookingId, setExpandedBookingId] = useState("");
   const [assignmentSelection, setAssignmentSelection] = useState({});
@@ -263,7 +276,11 @@ export function AdminPage({ adminUser }) {
   const [teamCoverageOpen, setTeamCoverageOpen] = useState(false);
   const [addWorkerModalOpen, setAddWorkerModalOpen] = useState(false);
   const [newWorkerName, setNewWorkerName] = useState("");
+  const [newWorkerEmail, setNewWorkerEmail] = useState("");
   const [workerSaving, setWorkerSaving] = useState(false);
+  const [emailModalMember, setEmailModalMember] = useState(null);
+  const [emailDraft, setEmailDraft] = useState("");
+  const [emailSaving, setEmailSaving] = useState(false);
   const [statusMenuOpenId, setStatusMenuOpenId] = useState("");
   const [cancelModalBooking, setCancelModalBooking] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -448,17 +465,23 @@ export function AdminPage({ adminUser }) {
     });
   }
 
-  async function handleStatusUpdate(id, status) {
-    setStatusSavingId(id);
-
-    const selectedIds = assignmentSelection[id] ?? [];
-    const assignedCleaners = selectedIds
+  function getSelectedAssignedCleaners(bookingId) {
+    const selectedIds = assignmentSelection[bookingId] ?? [];
+    return selectedIds
       .map((memberId) => teamMembers.find((member) => member.id === memberId))
       .filter(Boolean)
       .map((member) => ({
         id: member.id,
-        name: member.name
+        name: member.name,
+        email: member.email ?? "",
+        role: member.role ?? "head_admin"
       }));
+  }
+
+  async function handleStatusUpdate(id, status) {
+    setStatusSavingId(id);
+
+    const assignedCleaners = getSelectedAssignedCleaners(id);
 
     try {
       const response = await fetch(`/api/bookings/${id}`, {
@@ -508,11 +531,7 @@ export function AdminPage({ adminUser }) {
     setStatusSavingId(bookingId);
 
     const booking = bookings.find((item) => item.id === bookingId);
-    const selectedIds = assignmentSelection[bookingId] ?? [];
-    const assignedCleaners = selectedIds
-      .map((memberId) => teamMembers.find((member) => member.id === memberId))
-      .filter(Boolean)
-      .map((member) => ({ id: member.id, name: member.name }));
+    const assignedCleaners = getSelectedAssignedCleaners(bookingId);
 
     try {
       const response = await fetch(`/api/bookings/${bookingId}`, {
@@ -540,6 +559,63 @@ export function AdminPage({ adminUser }) {
       setToast({ tone: "error", message: error.message || "We couldn't save the internal note." });
     } finally {
       setStatusSavingId("");
+    }
+  }
+
+  async function handleSendAssignmentEmails(bookingId) {
+    const assignedCleaners = getSelectedAssignedCleaners(bookingId);
+
+    if (!assignedCleaners.length) {
+      setToast({ tone: "error", message: "Choose at least one team member before sending emails." });
+      return;
+    }
+
+    setEmailSavingId(bookingId);
+
+    try {
+      const response = await fetch(`/api/bookings/${bookingId}/assignment-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          assignedCleaners,
+          internalNotes: internalNotesDraft[bookingId] ?? ""
+        })
+      });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "We couldn't send assignment emails.");
+      }
+
+      setBookings((current) =>
+        current.map((booking) =>
+          booking.id === bookingId
+            ? {
+                ...booking,
+                status: data.booking.status,
+                cleaner: data.booking.cleaner,
+                cleanerId: data.booking.cleanerId,
+                assignedCleaners: data.booking.assignedCleaners,
+                internalNotes: data.booking.internalNotes
+              }
+            : booking
+        )
+      );
+      setAssignmentSelection((current) => ({
+        ...current,
+        [bookingId]: getBookingAssignmentIds(data.booking)
+      }));
+      setInternalNotesDraft((current) => ({
+        ...current,
+        [bookingId]: data.booking.internalNotes ?? ""
+      }));
+      setToast({ tone: "success", message: `Assignment saved and ${data.emailedCount} email${data.emailedCount === 1 ? "" : "s"} sent.` });
+    } catch (error) {
+      setToast({ tone: "error", message: error.message || "We couldn't send assignment emails." });
+    } finally {
+      setEmailSavingId("");
     }
   }
 
@@ -595,6 +671,11 @@ export function AdminPage({ adminUser }) {
     setAvailabilityModalOpen(true);
   }
 
+  function openEmailModal(member) {
+    setEmailModalMember(member);
+    setEmailDraft(member?.email ?? "");
+  }
+
   function toggleDetailPanel(bookingId, panelKey) {
     setDetailPanelOpen((current) => ({
       ...current,
@@ -646,18 +727,43 @@ export function AdminPage({ adminUser }) {
       const response = await fetch("/api/admin/workers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newWorkerName.trim() })
+        body: JSON.stringify({ name: newWorkerName.trim(), email: newWorkerEmail.trim() })
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Failed to add worker.");
       setTeamMembers(data.teamMembers ?? []);
+      const addedName = newWorkerName.trim();
       setNewWorkerName("");
+      setNewWorkerEmail("");
       setAddWorkerModalOpen(false);
-      setToast({ tone: "success", message: `${newWorkerName.trim()} added to the team.` });
+      setToast({ tone: "success", message: `${addedName} added to the team.` });
     } catch (error) {
       setToast({ tone: "error", message: error.message || "Failed to add worker." });
     } finally {
       setWorkerSaving(false);
+    }
+  }
+
+  async function handleEmailSave() {
+    if (!emailModalMember) return;
+
+    setEmailSaving(true);
+    try {
+      const response = await fetch(`/api/admin/workers/${emailModalMember.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: emailDraft.trim() })
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to update email.");
+      setTeamMembers(data.teamMembers ?? []);
+      setEmailModalMember(null);
+      setEmailDraft("");
+      setToast({ tone: "success", message: `${emailModalMember.name}'s email updated.` });
+    } catch (error) {
+      setToast({ tone: "error", message: error.message || "Failed to update email." });
+    } finally {
+      setEmailSaving(false);
     }
   }
 
@@ -1078,6 +1184,14 @@ export function AdminPage({ adminUser }) {
                                   <div className="text-sm text-slate-600">
                                     Status: <span className="font-medium capitalize text-slate-900">{formatStatusLabel(booking.status)}</span>
                                   </div>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleSendAssignmentEmails(booking.id)}
+                                    disabled={!selectedIds.length || emailSavingId === booking.id || statusSavingId === booking.id}
+                                    className="rounded-full bg-slate-950 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+                                  >
+                                    {emailSavingId === booking.id ? "Sending..." : "Save + send emails"}
+                                  </button>
                                 </div>
                               </div>
 
@@ -1085,7 +1199,7 @@ export function AdminPage({ adminUser }) {
                               {teamMembers.map((member) => {
                                   const active = selectedIds.includes(member.id);
                                   const memberStatus = getTeamMemberStatusForBooking(member, booking, bookings);
-                                  const disabled = (!active && selectedIds.length >= 3) || (!active && memberStatus.label !== "Available");
+                                  const disabled = (!active && selectedIds.length >= 3) || (!active && ["Time off", "Conflict"].includes(memberStatus.label));
 
                                   return (
                                     <button
@@ -1102,7 +1216,15 @@ export function AdminPage({ adminUser }) {
                                       <div className="flex items-start justify-between gap-3">
                                         <div>
                                           <div className="font-medium text-slate-900">{member.name}</div>
-                                          <div className="mt-1 text-sm text-slate-500">{member.zone}</div>
+                                          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-500">
+                                            <span>{member.zone}</span>
+                                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-500">
+                                              {member.role === "worker" ? "Sub-worker" : "Head admin"}
+                                            </span>
+                                          </div>
+                                          <div className="mt-1 text-xs text-slate-400">
+                                            {member.email ? member.email : "No email on file"}
+                                          </div>
                                         </div>
                                         <span className={`rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] ${memberStatus.tone}`}>
                                           {memberStatus.label}
@@ -1295,7 +1417,7 @@ export function AdminPage({ adminUser }) {
                 <div className="text-sm text-slate-500">{teamMembers.length} team members</div>
                 <button
                   type="button"
-                  onClick={() => { setNewWorkerName(""); setAddWorkerModalOpen(true); }}
+                  onClick={() => { setNewWorkerName(""); setNewWorkerEmail(""); setAddWorkerModalOpen(true); }}
                   className="rounded-full bg-brand-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-brand-700"
                 >
                   + Add sub-worker
@@ -1309,6 +1431,7 @@ export function AdminPage({ adminUser }) {
                       key={member.id}
                       member={member}
                       onEdit={() => openAvailabilityModal(member)}
+                      onEmailEdit={() => openEmailModal(member)}
                       onRemove={null}
                     />
                   ))}
@@ -1324,6 +1447,7 @@ export function AdminPage({ adminUser }) {
                         key={member.id}
                         member={member}
                         onEdit={() => openAvailabilityModal(member)}
+                        onEmailEdit={() => openEmailModal(member)}
                         onRemove={() => handleRemoveWorker(member.id, member.name)}
                       />
                     ))}
@@ -1490,7 +1614,7 @@ export function AdminPage({ adminUser }) {
             <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">Team</div>
             <h3 className="mt-2 text-2xl font-semibold text-slate-950">Add sub-worker</h3>
             <p className="mt-2 text-sm leading-7 text-slate-600">
-              Sub-workers appear on the dispatch board and can be assigned to bookings. They do not have admin login access.
+              Sub-workers appear on the dispatch board and can be assigned to bookings. Add an email if they should receive assignment notices.
             </p>
             <label className="mt-5 block">
               <span className="text-sm font-medium text-slate-700">Full name</span>
@@ -1502,6 +1626,17 @@ export function AdminPage({ adminUser }) {
                 placeholder="e.g. Marcus Johnson"
                 className="field-input mt-2 w-full"
                 autoFocus
+              />
+            </label>
+            <label className="mt-4 block">
+              <span className="text-sm font-medium text-slate-700">Email for assignment notices</span>
+              <input
+                type="email"
+                value={newWorkerEmail}
+                onChange={(e) => setNewWorkerEmail(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleAddWorker(); }}
+                placeholder="worker@example.com"
+                className="field-input mt-2 w-full"
               />
             </label>
             <div className="mt-6 flex flex-wrap items-center gap-3">
@@ -1516,6 +1651,52 @@ export function AdminPage({ adminUser }) {
               <button
                 type="button"
                 onClick={() => setAddWorkerModalOpen(false)}
+                className="rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {emailModalMember ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 py-8">
+          <div className="w-full max-w-md rounded-[2rem] border border-[#e6e0d3] bg-white p-6 shadow-[0_30px_90px_rgba(15,23,42,0.22)] sm:p-8">
+            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-brand-700">Team email</div>
+            <h3 className="mt-2 text-2xl font-semibold text-slate-950">Update {emailModalMember.name}</h3>
+            <p className="mt-2 text-sm leading-7 text-slate-600">
+              This email is used for assignment notifications when you click Save + send emails on a booking.
+            </p>
+            <label className="mt-5 block">
+              <span className="text-sm font-medium text-slate-700">Email address</span>
+              <input
+                type="email"
+                value={emailDraft}
+                onChange={(event) => setEmailDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") handleEmailSave();
+                }}
+                placeholder="team@example.com"
+                className="field-input mt-2 w-full"
+                autoFocus
+              />
+            </label>
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={handleEmailSave}
+                disabled={emailSaving}
+                className="rounded-full bg-[#6f8a67] px-5 py-3 text-sm font-semibold text-white transition hover:bg-[#4c6247] disabled:opacity-60"
+              >
+                {emailSaving ? "Saving..." : "Save email"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setEmailModalMember(null);
+                  setEmailDraft("");
+                }}
                 className="rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
               >
                 Cancel

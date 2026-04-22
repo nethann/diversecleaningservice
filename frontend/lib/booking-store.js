@@ -1,4 +1,5 @@
 import { addons, services, timeSlots } from "@/components/product-data";
+import { sendAssignmentEmail, sendCustomerBookingEmail, sendNewBookingEmail } from "@/lib/email";
 import { listAdminTeamMembers } from "@/lib/admin-auth";
 import { getPool, query } from "@/lib/db";
 
@@ -68,6 +69,14 @@ async function ensureBookingSchemaUpdates() {
         await client.query(`
           ALTER TABLE bookings
           ADD COLUMN IF NOT EXISTS payment_amount INTEGER
+        `);
+        await client.query(`
+          ALTER TABLE bookings
+          ALTER COLUMN cleaner_id DROP NOT NULL
+        `);
+        await client.query(`
+          ALTER TABLE bookings
+          ALTER COLUMN cleaner_name DROP NOT NULL
         `);
         await client.query(`
           UPDATE bookings
@@ -262,6 +271,15 @@ export async function getSlotSummaries(date) {
   });
 }
 
+function normalizeAssignedCleaners(assignedCleaners) {
+  return assignedCleaners?.map((item) => ({
+    id: item.id,
+    name: item.name,
+    email: item.email ?? "",
+    role: item.role ?? "head_admin"
+  })) ?? null;
+}
+
 export async function updateBookingStatus(id, status, assignedCleaners, internalNotes) {
   const allowedStatuses = new Set(["pending", "confirmed", "assigned", "in_progress", "completed", "cancelled"]);
 
@@ -269,11 +287,7 @@ export async function updateBookingStatus(id, status, assignedCleaners, internal
     return { error: "Invalid status.", status: 400 };
   }
 
-  const normalizedAssignedCleaners =
-    assignedCleaners?.map((item) => ({
-      id: item.id,
-      name: item.name
-    })) ?? null;
+  const normalizedAssignedCleaners = normalizeAssignedCleaners(assignedCleaners);
 
   if (normalizedAssignedCleaners && normalizedAssignedCleaners.length > 3) {
     return { error: "Only up to 3 team members can be assigned.", status: 400 };
@@ -281,7 +295,6 @@ export async function updateBookingStatus(id, status, assignedCleaners, internal
 
   const primaryCleaner = normalizedAssignedCleaners?.[0];
   const normalizedInternalNotes = typeof internalNotes === "string" ? internalNotes : null;
-
   const result = await query(
     `
       UPDATE bookings
@@ -326,8 +339,43 @@ export async function updateBookingStatus(id, status, assignedCleaners, internal
     return { error: "Booking not found.", status: 404 };
   }
 
+  const updatedBooking = mapBookingRow(result.rows[0]);
+
   return {
-    booking: mapBookingRow(result.rows[0]),
+    booking: updatedBooking,
+    status: 200
+  };
+}
+
+export async function sendBookingAssignmentEmails(id, assignedCleaners, internalNotes) {
+  const normalizedAssignedCleaners = normalizeAssignedCleaners(assignedCleaners) ?? [];
+
+  if (!normalizedAssignedCleaners.length) {
+    return { error: "Choose at least one team member before sending assignment emails.", status: 400 };
+  }
+
+  if (normalizedAssignedCleaners.length > 3) {
+    return { error: "Only up to 3 team members can be assigned.", status: 400 };
+  }
+
+  const recipients = normalizedAssignedCleaners.filter((member) => member.email);
+  if (!recipients.length) {
+    return { error: "Add an email address for at least one assigned team member before sending.", status: 400 };
+  }
+
+  const updateResult = await updateBookingStatus(id, "assigned", normalizedAssignedCleaners, internalNotes);
+  if (updateResult.error) {
+    return updateResult;
+  }
+
+  const emailResult = await sendAssignmentEmail(updateResult.booking, normalizedAssignedCleaners);
+  if (emailResult.error) {
+    return { error: "Assignment was saved, but the email could not be sent. Check your Resend settings.", status: 500 };
+  }
+
+  return {
+    booking: updateResult.booking,
+    emailedCount: recipients.length,
     status: 200
   };
 }
@@ -404,28 +452,15 @@ export async function createBooking(payload) {
     return { error: validationError, status: 400 };
   }
 
-  const bookings = await listBookings();
-  const teamMembers = await listAdminTeamMembers();
-  const availableTeams = getAvailableTeams(bookings, payload.date, payload.time, teamMembers);
-
-  if (availableTeams.length === 0) {
-    return { error: "That slot was just taken. Choose another available time.", status: 409 };
-  }
-
   const service = services.find((item) => item.slug === payload.service);
   if (!service) {
     return { error: "The selected service is not available right now.", status: 400 };
   }
 
-  const assignedCleaner = availableTeams[0];
+  const bookings = await listBookings();
   const nextId = `DCS-${2400 + bookings.length + 1}`;
   const selectedAddons = addons.filter((addon) => (payload.selectedAddons ?? []).includes(addon.slug));
-  const assignedCleaners = [
-    {
-      id: assignedCleaner.id,
-      name: assignedCleaner.name
-    }
-  ];
+  const assignedCleaners = [];
   const client = await getPool().connect();
 
   try {
@@ -466,8 +501,8 @@ export async function createBooking(payload) {
         payload.address,
         payload.date,
         payload.time,
-        assignedCleaner.id,
-        assignedCleaner.name,
+        null,
+        null,
         JSON.stringify(assignedCleaners),
         payload.details ?? "",
         payload.recurring ?? "one-time"
@@ -489,7 +524,7 @@ export async function createBooking(payload) {
     await client.query("ROLLBACK");
 
     if (error.code === "23505") {
-      return { error: "That slot was just taken. Choose another available time.", status: 409 };
+      return { error: "We could not save that booking request. Please try again.", status: 409 };
     }
 
     throw error;
@@ -497,33 +532,39 @@ export async function createBooking(payload) {
     client.release();
   }
 
+  const booking = {
+    id: nextId,
+    customer: payload.fullName,
+    email: payload.email,
+    phone: payload.phone ?? "",
+    service: service.name,
+    serviceSlug: service.slug,
+    homeSize: payload.homeSize ?? "",
+    bathCount: payload.bathCount ?? "",
+    date: payload.date,
+    time: payload.time,
+    cleaner: null,
+    cleanerId: null,
+    assignedCleaners,
+    address: payload.address,
+    details: payload.details ?? "",
+    internalNotes: "",
+    recurring: payload.recurring ?? "one-time",
+    status: "confirmed",
+    selectedAddons: selectedAddons.map((addon) => ({
+      slug: addon.slug,
+      name: addon.name,
+      priceLabel: addon.priceLabel
+    }))
+  };
+
+  await Promise.all([
+    sendNewBookingEmail(booking),
+    sendCustomerBookingEmail(booking)
+  ]);
+
   return {
-    booking: {
-      id: nextId,
-      customer: payload.fullName,
-      email: payload.email,
-      phone: payload.phone ?? "",
-      service: service.name,
-      serviceSlug: service.slug,
-      homeSize: payload.homeSize ?? "",
-      bathCount: payload.bathCount ?? "",
-      date: payload.date,
-      time: payload.time,
-      cleaner: assignedCleaner.name,
-      cleanerId: assignedCleaner.id,
-      assignedCleaners,
-      address: payload.address,
-      details: payload.details ?? "",
-      internalNotes: "",
-      recurring: payload.recurring ?? "one-time",
-      status: "confirmed",
-      selectedAddons: selectedAddons.map((addon) => ({
-        slug: addon.slug,
-        name: addon.name,
-        priceLabel: addon.priceLabel
-      }))
-    },
-    slotSummaries: await getSlotSummaries(payload.date),
+    booking,
     status: 201
   };
 }

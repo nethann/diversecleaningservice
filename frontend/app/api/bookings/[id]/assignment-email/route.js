@@ -1,21 +1,16 @@
 import { NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/admin-auth";
-import { createBooking, listBookings } from "@/lib/booking-store";
+import { sendBookingAssignmentEmails } from "@/lib/booking-store";
 
-export async function GET() {
+export async function POST(request, { params }) {
   const session = await getAdminSession();
 
   if (!session) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
 
-  const bookings = await listBookings();
-  return NextResponse.json({ bookings });
-}
-
-export async function POST(request) {
   const payload = await request.json();
-  const result = await createBooking(payload);
+  const result = await sendBookingAssignmentEmails(params.id, payload.assignedCleaners, payload.internalNotes);
 
   if (result.error) {
     return NextResponse.json({ error: result.error }, { status: result.status });
@@ -23,7 +18,8 @@ export async function POST(request) {
 
   return NextResponse.json(
     {
-      booking: result.booking
+      booking: result.booking,
+      emailedCount: result.emailedCount
     },
     { status: result.status }
   );

@@ -5,8 +5,8 @@ export async function POST(request) {
   const session = await getAdminSession();
   if (!session) return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
 
-  const { name } = await request.json();
-  const result = await createWorker(name ?? "");
+  const { name, email } = await request.json();
+  const result = await createWorker(name ?? "", email ?? "");
 
   if (result.error) return NextResponse.json({ error: result.error }, { status: result.status });
 

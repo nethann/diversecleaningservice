@@ -14,10 +14,6 @@ function toDateInputValue(date) {
 const today = toDateInputValue(new Date());
 const initialDate = toDateInputValue(new Date(Date.now() + 2 * 24 * 60 * 60 * 1000));
 
-function getWeekday(date) {
-  return new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(new Date(`${date}T12:00:00`));
-}
-
 function AddonIcon({ slug }) {
   const commonProps = {
     className: "h-5 w-5",
@@ -92,8 +88,6 @@ function getPricingMatch(serviceSlug, homeSize, bathCount) {
 }
 
 export function BookingPage() {
-  const [slotSummaries, setSlotSummaries] = useState([]);
-  const [availabilityLoading, setAvailabilityLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({
     fullName: "",
@@ -120,22 +114,10 @@ export function BookingPage() {
     return service.slug === "commercial-cleaning-service";
   });
 
-  const availableSlots = slotSummaries.filter((slot) => slot.isAvailable);
-  const selectedSlot = slotSummaries.find((slot) => slot.slot === form.time);
-  const suggestedCleaner = selectedSlot?.availableTeams[0] ?? null;
   const estimatedRange = useMemo(
     () => getPricingMatch(form.service, form.homeSize, form.bathCount),
     [form.service, form.homeSize, form.bathCount]
   );
-
-  useEffect(() => {
-    if (!selectedSlot?.isAvailable) {
-      setForm((current) => ({
-        ...current,
-        time: availableSlots[0]?.slot ?? ""
-      }));
-    }
-  }, [availableSlots, selectedSlot]);
 
   useEffect(() => {
     setForm((current) => ({
@@ -144,43 +126,6 @@ export function BookingPage() {
       bathCount: current.service === "standard-cleaning" ? current.bathCount : ""
     }));
   }, [form.service]);
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadAvailability() {
-      setAvailabilityLoading(true);
-
-      try {
-        const response = await fetch(`/api/availability?date=${encodeURIComponent(form.date)}`);
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || "We couldn't load availability right now.");
-        }
-
-        if (active) {
-          setSlotSummaries(data.slotSummaries ?? []);
-          setError("");
-        }
-      } catch (loadError) {
-        if (active) {
-          setSlotSummaries([]);
-          setError(loadError.message || "We couldn't load availability right now.");
-        }
-      } finally {
-        if (active) {
-          setAvailabilityLoading(false);
-        }
-      }
-    }
-
-    loadAvailability();
-
-    return () => {
-      active = false;
-    };
-  }, [form.date]);
 
   function formatPhoneInput(raw) {
     const digits = raw.replace(/\D/g, "").slice(0, 10);
@@ -241,7 +186,6 @@ export function BookingPage() {
         throw new Error(data.error || "We couldn't submit your booking right now.");
       }
 
-      setSlotSummaries(data.slotSummaries ?? []);
       setSubmittedBooking({
         ...data.booking,
         pricing: estimatedRange ?? selectedService.priceLabel,
@@ -389,44 +333,20 @@ export function BookingPage() {
               </label>
             </div>
 
-            <div className="mt-8">
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <div className="text-sm font-medium text-slate-700">Available time slots</div>
-                  <div className="mt-1 text-sm text-slate-500">
-                    {availabilityLoading ? "Checking live team coverage..." : `${getWeekday(form.date)} coverage updates from live team schedules.`}
-                  </div>
+            <div className="mt-8 rounded-[2rem] border border-slate-200 bg-white/70 p-5">
+              <div className="grid gap-5 md:grid-cols-[0.8fr_1.2fr] md:items-end">
+                <label className="block">
+                  <span className="text-sm font-medium text-slate-700">Preferred time</span>
+                  <input
+                    type="time"
+                    value={form.time}
+                    onChange={(event) => updateField("time", event.target.value)}
+                    className="field-input mt-2 w-full"
+                  />
+                </label>
+                <div className="rounded-3xl bg-mist px-5 py-4 text-sm leading-6 text-slate-600">
+                  Choose the time that works best for you. We will review the request, confirm the schedule, and assign the right team from the admin dispatch board.
                 </div>
-                <div className="rounded-full bg-slate-100 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  {availabilityLoading ? "Loading" : `${availableSlots.length} open slots`}
-                </div>
-              </div>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {slotSummaries.map((slot) => {
-                  const active = form.time === slot.slot;
-                  return (
-                    <button
-                      key={slot.slot}
-                      type="button"
-                      onClick={() => slot.isAvailable && updateField("time", slot.slot)}
-                      disabled={!slot.isAvailable || availabilityLoading}
-                      className={`rounded-3xl border px-4 py-4 text-left transition ${
-                        !slot.isAvailable
-                          ? "cursor-not-allowed border-rose-100 bg-rose-50 text-rose-500"
-                          : active
-                            ? "border-slate-950 bg-slate-950 text-white"
-                            : "border-slate-200 bg-white hover:border-brand-200 hover:bg-slate-50"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="font-medium">{slot.slot}</div>
-                        <div className={`text-xs font-semibold uppercase tracking-[0.18em] ${active ? "text-white/70" : "text-slate-400"}`}>
-                          {slot.isAvailable ? `${slot.capacity} teams open` : "Full"}
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
               </div>
             </div>
 
@@ -479,7 +399,7 @@ export function BookingPage() {
                 requests are finalized after a technician visit.
               </div>
               <button
-                disabled={!availableSlots.length || availabilityLoading || submitting}
+                disabled={submitting}
                 className="rounded-full bg-brand-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-700 disabled:cursor-not-allowed disabled:bg-slate-300"
               >
                 {submitting ? "Submitting..." : "Submit request"}
@@ -516,8 +436,8 @@ export function BookingPage() {
                   <span className="font-medium text-slate-900">{form.selectedAddons.length}</span>
                 </div>
                 <div className="flex items-center justify-between gap-4">
-                  <span>Cleaner preview</span>
-                  <span className="font-medium text-slate-900">{suggestedCleaner ? suggestedCleaner.name : "Awaiting slot"}</span>
+                  <span>Dispatch</span>
+                  <span className="font-medium text-slate-900">Assigned after review</span>
                 </div>
               </div>
               <div className="mt-6 rounded-3xl bg-slate-950 px-5 py-5 text-white">
@@ -545,16 +465,11 @@ export function BookingPage() {
             ) : null}
 
             <div className="glass rounded-[2rem] p-5 sm:p-6">
-              <h2 className="text-xl font-semibold text-slate-950">Availability on {form.date}</h2>
-              <div className="mt-4 space-y-3">
-                {slotSummaries.map((slot) => (
-                  <div key={slot.slot} className="flex items-center justify-between rounded-2xl bg-mist px-4 py-3 text-sm">
-                    <span className="font-medium text-slate-900">{slot.slot}</span>
-                    <span className={slot.isAvailable ? "text-emerald-700" : "text-rose-700"}>
-                      {slot.isAvailable ? `${slot.capacity} teams available` : "Fully booked"}
-                    </span>
-                  </div>
-                ))}
+              <h2 className="text-xl font-semibold text-slate-950">What happens next</h2>
+              <div className="mt-4 space-y-3 text-sm text-slate-600">
+                <div className="rounded-2xl bg-mist px-4 py-4">We receive your preferred date and time.</div>
+                <div className="rounded-2xl bg-mist px-4 py-4">A head admin reviews the request and assigns the right team.</div>
+                <div className="rounded-2xl bg-mist px-4 py-4">You will receive confirmation if anything needs to be adjusted.</div>
               </div>
             </div>
           </aside>

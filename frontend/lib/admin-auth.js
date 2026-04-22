@@ -12,6 +12,8 @@ const ADMIN_USERS = [
     displayName: "Vonda Richardson",
     passwordEnv: "ADMIN_PASSWORD_VONDA_RICHARDSON",
     passwordEnvLegacy: "ADMIN_PASSWORD_WANDA_RICHARDSON",
+    emailEnv: "ADMIN_EMAIL_VONDA_RICHARDSON",
+    emailEnvLegacy: "ADMIN_EMAIL_WANDA_RICHARDSON",
     zone: "Atlanta Area",
     legacyIds: ["team-1"],
     legacyNames: ["Wonda Robinson", "Wanda Richardson", "Vonda Richardson"]
@@ -20,6 +22,7 @@ const ADMIN_USERS = [
     username: "nethan nagendran",
     displayName: "Nethan Nagendran",
     passwordEnv: "ADMIN_PASSWORD_NETHAN_NAGENDRAN",
+    emailEnv: "ADMIN_EMAIL_NETHAN_NAGENDRAN",
     zone: "Atlanta Area",
     legacyIds: ["team-2"],
     legacyNames: ["Nethan Nagendran"]
@@ -28,6 +31,7 @@ const ADMIN_USERS = [
     username: "roshan nagendran",
     displayName: "Roshan Nagendran",
     passwordEnv: "ADMIN_PASSWORD_ROSHAN_NAGENDRAN",
+    emailEnv: "ADMIN_EMAIL_ROSHAN_NAGENDRAN",
     zone: "Gwinnett + Atlanta",
     legacyIds: ["team-3"],
     legacyNames: ["Roshan Nagendran"]
@@ -125,6 +129,10 @@ async function ensureAdminSchema() {
         `);
         await client.query(`
           ALTER TABLE admin_users
+          ADD COLUMN IF NOT EXISTS email TEXT
+        `);
+        await client.query(`
+          ALTER TABLE admin_users
           ADD COLUMN IF NOT EXISTS role TEXT NOT NULL DEFAULT 'head_admin'
         `);
         await client.query(`
@@ -194,21 +202,23 @@ async function ensureAdminUsersSeeded() {
         for (const admin of ADMIN_USERS) {
           const password = process.env[admin.passwordEnv] ?? (admin.passwordEnvLegacy ? process.env[admin.passwordEnvLegacy] : null);
           const passwordHash = password ? createPasswordHash(password) : null;
+          const adminEmail = process.env[admin.emailEnv] ?? (admin.emailEnvLegacy ? process.env[admin.emailEnvLegacy] : null);
           const adminId = admin.username.replace(/\s+/g, "-");
 
           await client.query(
             `
-              INSERT INTO admin_users (id, username, display_name, zone, password_hash, is_active, role)
-              VALUES ($1, $2, $3, $4, $5, TRUE, 'head_admin')
+              INSERT INTO admin_users (id, username, display_name, zone, password_hash, email, is_active, role)
+              VALUES ($1, $2, $3, $4, $5, $6, TRUE, 'head_admin')
               ON CONFLICT (username) DO UPDATE
               SET display_name = EXCLUDED.display_name,
                   zone = EXCLUDED.zone,
                   password_hash = COALESCE(EXCLUDED.password_hash, admin_users.password_hash),
+                  email = COALESCE(admin_users.email, EXCLUDED.email),
                   is_active = TRUE,
                   role = 'head_admin',
                   updated_at = NOW()
             `,
-            [adminId, normalizeUsername(admin.username), admin.displayName, admin.zone, passwordHash]
+            [adminId, normalizeUsername(admin.username), admin.displayName, admin.zone, passwordHash, adminEmail]
           );
 
           // Also migrate any old username row (e.g. wanda → vonda) so the old login stops working
@@ -248,8 +258,18 @@ async function ensureAdminUsersSeeded() {
             SET is_active = FALSE,
                 updated_at = NOW()
             WHERE username <> ALL($1::text[])
+              AND role <> 'worker'
           `,
           [ADMIN_USERS.map((admin) => normalizeUsername(admin.username))]
+        );
+
+        await client.query(
+          `
+            UPDATE admin_users
+            SET is_active = TRUE,
+                updated_at = NOW()
+            WHERE role = 'worker'
+          `
         );
 
         await client.query("COMMIT");
@@ -282,6 +302,7 @@ export async function listAdminTeamMembers() {
         u.id,
         u.username,
         u.display_name AS "displayName",
+        u.email,
         u.zone,
         u.role,
         COALESCE(
@@ -319,6 +340,7 @@ export async function listAdminTeamMembers() {
       id: row.id,
       username: row.username,
       name: row.displayName,
+      email: row.email ?? "",
       zone: row.zone,
       role: row.role ?? "head_admin",
       days,
@@ -328,19 +350,20 @@ export async function listAdminTeamMembers() {
   });
 }
 
-export async function createWorker(displayName) {
+export async function createWorker(displayName, email = "") {
   await ensureAdminUsersSeeded();
 
   const trimmed = displayName.trim();
   if (!trimmed) return { error: "Name is required.", status: 400 };
+  const trimmedEmail = String(email ?? "").trim();
 
   const id = `worker-${Date.now()}-${randomBytes(4).toString("hex")}`;
   const username = normalizeUsername(trimmed) + "-" + id.slice(-8);
 
   await query(
-    `INSERT INTO admin_users (id, username, display_name, zone, is_active, role)
-     VALUES ($1, $2, $3, 'Sub-worker', TRUE, 'worker')`,
-    [id, username, trimmed]
+    `INSERT INTO admin_users (id, username, display_name, email, zone, is_active, role)
+     VALUES ($1, $2, $3, $4, 'Sub-worker', TRUE, 'worker')`,
+    [id, username, trimmed, trimmedEmail || null]
   );
 
   return { workerId: id };
@@ -355,6 +378,26 @@ export async function deleteWorker(workerId) {
   );
 
   if (!result.rowCount) return { error: "Worker not found.", status: 404 };
+  return { ok: true };
+}
+
+export async function updateTeamMemberEmail(memberId, email = "") {
+  await ensureAdminUsersSeeded();
+
+  const normalizedEmail = String(email ?? "").trim();
+  const result = await query(
+    `
+      UPDATE admin_users
+      SET email = $2,
+          updated_at = NOW()
+      WHERE id = $1
+        AND is_active = TRUE
+      RETURNING id
+    `,
+    [memberId, normalizedEmail || null]
+  );
+
+  if (!result.rowCount) return { error: "Team member not found.", status: 404 };
   return { ok: true };
 }
 
