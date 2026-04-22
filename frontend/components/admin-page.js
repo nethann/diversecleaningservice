@@ -263,6 +263,7 @@ export function AdminPage({ adminUser }) {
   const [loading, setLoading] = useState(true);
   const [statusSavingId, setStatusSavingId] = useState("");
   const [emailSavingId, setEmailSavingId] = useState("");
+  const [emailSentId, setEmailSentId] = useState("");
   const [initMessage, setInitMessage] = useState("");
   const [expandedBookingId, setExpandedBookingId] = useState("");
   const [assignmentSelection, setAssignmentSelection] = useState({});
@@ -283,6 +284,8 @@ export function AdminPage({ adminUser }) {
   const [emailSaving, setEmailSaving] = useState(false);
   const [statusMenuOpenId, setStatusMenuOpenId] = useState("");
   const [cancelModalBooking, setCancelModalBooking] = useState(null);
+  const [deleteModalBooking, setDeleteModalBooking] = useState(null);
+  const [deleteSavingId, setDeleteSavingId] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [serviceFilter, setServiceFilter] = useState("all");
@@ -612,6 +615,10 @@ export function AdminPage({ adminUser }) {
         [bookingId]: data.booking.internalNotes ?? ""
       }));
       setToast({ tone: "success", message: `Assignment saved and ${data.emailedCount} email${data.emailedCount === 1 ? "" : "s"} sent.` });
+      setEmailSentId(bookingId);
+      window.setTimeout(() => {
+        setEmailSentId((current) => (current === bookingId ? "" : current));
+      }, 2200);
     } catch (error) {
       setToast({ tone: "error", message: error.message || "We couldn't send assignment emails." });
     } finally {
@@ -631,6 +638,52 @@ export function AdminPage({ adminUser }) {
 
     await handleStatusUpdate(cancelModalBooking.id, "cancelled");
     setCancelModalBooking(null);
+  }
+
+  function requestPermanentBookingDelete(booking) {
+    setStatusMenuOpenId("");
+    setDeleteModalBooking(booking);
+  }
+
+  async function confirmPermanentBookingDelete() {
+    if (!deleteModalBooking) {
+      return;
+    }
+
+    setDeleteSavingId(deleteModalBooking.id);
+
+    try {
+      const response = await fetch(`/api/bookings/${deleteModalBooking.id}`, { method: "DELETE" });
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "We couldn't delete this booking.");
+      }
+
+      setBookings((current) => current.filter((booking) => booking.id !== deleteModalBooking.id));
+      setAssignmentSelection((current) => {
+        const next = { ...current };
+        delete next[deleteModalBooking.id];
+        return next;
+      });
+      setInternalNotesDraft((current) => {
+        const next = { ...current };
+        delete next[deleteModalBooking.id];
+        return next;
+      });
+      setDetailPanelOpen((current) => {
+        const next = { ...current };
+        delete next[deleteModalBooking.id];
+        return next;
+      });
+      setExpandedBookingId((current) => (current === deleteModalBooking.id ? "" : current));
+      setDeleteModalBooking(null);
+      setToast({ tone: "success", message: "Booking permanently deleted." });
+    } catch (error) {
+      setToast({ tone: "error", message: error.message || "We couldn't delete this booking." });
+    } finally {
+      setDeleteSavingId("");
+    }
   }
 
   function handleWorkingHoursChange(weekday, field, value) {
@@ -1053,6 +1106,25 @@ export function AdminPage({ adminUser }) {
                             >
                               {isExpanded ? "Hide details" : "View details"}
                             </button>
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                requestPermanentBookingDelete(booking);
+                              }}
+                              disabled={deleteSavingId === booking.id}
+                              className="flex h-10 w-10 items-center justify-center rounded-full border border-rose-200 bg-rose-50 text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                              aria-label={`Permanently delete booking for ${booking.customer}`}
+                              title="Permanently delete booking"
+                            >
+                              <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M10 11v6" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M14 11v6" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 7l1 14h10l1-14" />
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 7V4h6v3" />
+                              </svg>
+                            </button>
                           </div>
                         </div>
 
@@ -1188,9 +1260,13 @@ export function AdminPage({ adminUser }) {
                                     type="button"
                                     onClick={() => handleSendAssignmentEmails(booking.id)}
                                     disabled={!selectedIds.length || emailSavingId === booking.id || statusSavingId === booking.id}
-                                    className="rounded-full bg-slate-950 px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+                                    className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-white transition disabled:cursor-not-allowed disabled:bg-slate-300 ${
+                                      emailSentId === booking.id
+                                        ? "bg-emerald-600 hover:bg-emerald-600"
+                                        : "bg-slate-950 hover:bg-slate-800"
+                                    }`}
                                   >
-                                    {emailSavingId === booking.id ? "Sending..." : "Save + send emails"}
+                                    {emailSavingId === booking.id ? "Sending..." : emailSentId === booking.id ? "Sent" : "Save + send emails"}
                                   </button>
                                 </div>
                               </div>
@@ -1293,7 +1369,7 @@ export function AdminPage({ adminUser }) {
                                     <label className="block">
                                       <span className="text-xs text-slate-500">Amount (USD)</span>
                                       <div className="relative mt-1">
-                                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-slate-500">$</span>
+                                        <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-slate-500">$</span>
                                         <input
                                           type="number"
                                           min="0.50"
@@ -1306,7 +1382,7 @@ export function AdminPage({ adminUser }) {
                                             }))
                                           }
                                           placeholder="0.00"
-                                          className="field-input w-full pl-7"
+                                          className="field-input w-full pl-11"
                                         />
                                       </div>
                                     </label>
@@ -1727,6 +1803,48 @@ export function AdminPage({ adminUser }) {
               <button
                 type="button"
                 onClick={() => setCancelModalBooking(null)}
+                className="rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+              >
+                Keep booking
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {deleteModalBooking ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 px-4 py-8">
+          <div className="w-full max-w-lg rounded-[2rem] border border-rose-200 bg-white p-6 shadow-[0_30px_90px_rgba(15,23,42,0.22)] sm:p-8">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-rose-50 text-rose-700">
+              <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 7h16" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10 11v6" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M14 11v6" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 7l1 14h10l1-14" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 7V4h6v3" />
+              </svg>
+            </div>
+            <div className="mt-4 text-xs font-semibold uppercase tracking-[0.2em] text-rose-700">Permanent delete</div>
+            <h3 className="mt-2 text-2xl font-semibold text-slate-950">Delete this booking forever?</h3>
+            <p className="mt-3 text-sm leading-7 text-slate-600">
+              This will permanently delete the booking for {deleteModalBooking.customer} on {formatDateLabel(deleteModalBooking.date)} at{" "}
+              {deleteModalBooking.time}. This action cannot be undone, and the booking will not be retrievable.
+            </p>
+            <div className="mt-5 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-4 text-sm text-rose-800">
+              If you only need to stop the visit but keep the record, use Cancel instead of permanent delete.
+            </div>
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={confirmPermanentBookingDelete}
+                disabled={deleteSavingId === deleteModalBooking.id}
+                className="rounded-full bg-rose-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:opacity-60"
+              >
+                {deleteSavingId === deleteModalBooking.id ? "Deleting..." : "Yes, permanently delete"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeleteModalBooking(null)}
                 className="rounded-full border border-slate-200 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
               >
                 Keep booking

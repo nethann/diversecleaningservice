@@ -380,6 +380,30 @@ export async function sendBookingAssignmentEmails(id, assignedCleaners, internal
   };
 }
 
+export async function deleteBooking(id) {
+  await ensureReferenceData();
+
+  const client = await getPool().connect();
+
+  try {
+    await client.query("BEGIN");
+    await client.query(`DELETE FROM booking_addons WHERE booking_id = $1`, [id]);
+    const result = await client.query(`DELETE FROM bookings WHERE id = $1 RETURNING id`, [id]);
+    await client.query("COMMIT");
+
+    if (!result.rowCount) {
+      return { error: "Booking not found.", status: 404 };
+    }
+
+    return { ok: true, status: 200 };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 export async function updateBookingPayment(id, { stripeInvoiceId, stripePaymentUrl, paymentAmount }) {
   const result = await query(
     `
@@ -429,8 +453,12 @@ export async function updateBookingPaymentStatus(stripeInvoiceId, paymentStatus)
 }
 
 function validateBookingPayload(payload) {
-  if (!payload.fullName || !payload.email || !payload.address || !payload.date || !payload.time || !payload.service) {
+  if (!payload.fullName || !payload.email || !payload.phone || !payload.address || !payload.date || !payload.time || !payload.service || !payload.recurring || !payload.details?.trim()) {
     return "Please complete the required booking details before submitting your request.";
+  }
+
+  if (String(payload.phone ?? "").replace(/\D/g, "").length < 10) {
+    return "Please enter a valid 10-digit phone number.";
   }
 
   if (["standard-cleaning", "deep-cleaning", "move-in-move-out"].includes(payload.service) && !payload.homeSize) {

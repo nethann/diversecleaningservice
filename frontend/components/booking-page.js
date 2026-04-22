@@ -155,8 +155,13 @@ export function BookingPage() {
   async function handleSubmit(event) {
     event.preventDefault();
 
-    if (!form.fullName || !form.email || !form.address || !form.date || !form.time || !form.service) {
+    if (!form.fullName || !form.email || !form.phone || !form.address || !form.date || !form.time || !form.service || !form.recurring || !form.details.trim()) {
       setError("Please complete the required booking details before submitting your request.");
+      return;
+    }
+
+    if (form.phone.replace(/\D/g, "").length < 10) {
+      setError("Please enter a valid 10-digit phone number.");
       return;
     }
 
@@ -238,6 +243,7 @@ export function BookingPage() {
                   onChange={(event) => updateField("fullName", event.target.value)}
                   className="field-input mt-2 w-full"
                   placeholder="Jane Johnson"
+                  required
                 />
               </label>
 
@@ -249,6 +255,7 @@ export function BookingPage() {
                   onChange={(event) => updateField("email", event.target.value)}
                   className="field-input mt-2 w-full"
                   placeholder="jane@example.com"
+                  required
                 />
               </label>
 
@@ -261,12 +268,13 @@ export function BookingPage() {
                   className="field-input mt-2 w-full"
                   placeholder="(555)-123-4567"
                   maxLength={14}
+                  required
                 />
               </label>
 
               <label className="block">
                 <span className="text-sm font-medium text-slate-700">Service type</span>
-                <select value={form.service} onChange={(event) => updateField("service", event.target.value)} className="field-input mt-2 w-full">
+                <select value={form.service} onChange={(event) => updateField("service", event.target.value)} className="field-input mt-2 w-full" required>
                   {services.map((service) => (
                     <option key={service.slug} value={service.slug}>
                       {service.name}
@@ -278,7 +286,7 @@ export function BookingPage() {
               {showSizePricing ? (
                 <label className="block">
                   <span className="text-sm font-medium text-slate-700">Home size</span>
-                  <select value={form.homeSize} onChange={(event) => updateField("homeSize", event.target.value)} className="field-input mt-2 w-full">
+                  <select value={form.homeSize} onChange={(event) => updateField("homeSize", event.target.value)} className="field-input mt-2 w-full" required>
                     <option value="">Select size</option>
                     <option value="1-bedroom">1 Bedroom</option>
                     <option value="2-bedroom">2 Bedroom</option>
@@ -291,7 +299,7 @@ export function BookingPage() {
               {showBathCount ? (
                 <label className="block">
                   <span className="text-sm font-medium text-slate-700">Bath count</span>
-                  <select value={form.bathCount} onChange={(event) => updateField("bathCount", event.target.value)} className="field-input mt-2 w-full">
+                  <select value={form.bathCount} onChange={(event) => updateField("bathCount", event.target.value)} className="field-input mt-2 w-full" required>
                     <option value="">Select baths</option>
                     <option value="1-bath">1 Bath</option>
                     <option value="2-bath">2 Bath</option>
@@ -308,6 +316,7 @@ export function BookingPage() {
                   onChange={(event) => updateField("address", event.target.value)}
                   className="field-input mt-2 w-full"
                   placeholder="123 Main Street, Apt 4B"
+                  required
                 />
               </label>
 
@@ -319,12 +328,13 @@ export function BookingPage() {
                   value={form.date}
                   onChange={(event) => updateField("date", event.target.value)}
                   className="field-input mt-2 w-full"
+                  required
                 />
               </label>
 
               <label className="block">
                 <span className="text-sm font-medium text-slate-700">Recurring frequency</span>
-                <select value={form.recurring} onChange={(event) => updateField("recurring", event.target.value)} className="field-input mt-2 w-full">
+                <select value={form.recurring} onChange={(event) => updateField("recurring", event.target.value)} className="field-input mt-2 w-full" required>
                   <option value="one-time">One-time</option>
                   <option value="weekly">Weekly</option>
                   <option value="biweekly">Biweekly</option>
@@ -342,6 +352,7 @@ export function BookingPage() {
                     value={form.time}
                     onChange={(event) => updateField("time", event.target.value)}
                     className="field-input mt-2 w-full"
+                    required
                   />
                 </label>
                 <div className="rounded-3xl bg-mist px-5 py-4 text-sm leading-6 text-slate-600">
@@ -390,6 +401,7 @@ export function BookingPage() {
                 onChange={(event) => updateField("details", event.target.value)}
                 className="field-input mt-2 w-full rounded-[1.5rem]"
                 placeholder="Entry instructions, parking notes, pets, or focus areas"
+                required
               />
             </label>
 
@@ -478,7 +490,15 @@ export function BookingPage() {
 
       {submittedBooking ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4 py-8">
-          <div className="w-full max-w-lg rounded-[2rem] border border-[#e6e0d3] bg-white p-7 shadow-[0_30px_90px_rgba(15,23,42,0.22)] sm:p-9">
+          <div className="relative w-full max-w-lg rounded-[2rem] border border-[#e6e0d3] bg-white p-7 shadow-[0_30px_90px_rgba(15,23,42,0.22)] sm:p-9">
+            <button
+              type="button"
+              onClick={() => setSubmittedBooking(null)}
+              className="absolute right-5 top-5 flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 text-xl leading-none text-slate-500 transition hover:bg-slate-50 hover:text-slate-900"
+              aria-label="Close booking confirmation"
+            >
+              ×
+            </button>
             <div className="flex flex-col items-center text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50">
                 <svg className="h-8 w-8 text-emerald-600" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
