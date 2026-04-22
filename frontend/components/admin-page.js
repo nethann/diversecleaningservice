@@ -199,6 +199,11 @@ function buildWorkingHours(weekdayList, availability) {
   return map;
 }
 
+function isDetailPanelOpen(detailPanelOpen, bookingId, panelKey) {
+  const defaultOpenPanels = new Set(["customerNotes", "pricingAddons"]);
+  return detailPanelOpen[bookingId]?.[panelKey] ?? defaultOpenPanels.has(panelKey);
+}
+
 function MemberCard({ member, onEdit, onEmailEdit, onRemove }) {
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-5">
@@ -274,7 +279,7 @@ export function AdminPage({ adminUser }) {
   const [availabilityMessage, setAvailabilityMessage] = useState("");
   const [availabilityModalOpen, setAvailabilityModalOpen] = useState(false);
   const [availabilityTarget, setAvailabilityTarget] = useState(null);
-  const [teamCoverageOpen, setTeamCoverageOpen] = useState(false);
+  const [teamCoverageOpen, setTeamCoverageOpen] = useState(true);
   const [addWorkerModalOpen, setAddWorkerModalOpen] = useState(false);
   const [newWorkerName, setNewWorkerName] = useState("");
   const [newWorkerEmail, setNewWorkerEmail] = useState("");
@@ -734,7 +739,7 @@ export function AdminPage({ adminUser }) {
       ...current,
       [bookingId]: {
         ...current[bookingId],
-        [panelKey]: !current[bookingId]?.[panelKey]
+        [panelKey]: !isDetailPanelOpen(current, bookingId, panelKey)
       }
     }));
   }
@@ -1018,6 +1023,9 @@ export function AdminPage({ adminUser }) {
                       .map((memberId) => teamMembers.find((member) => member.id === memberId)?.name)
                       .filter(Boolean);
                     const dispatchState = getDispatchStatusKey(booking);
+                    const customerNotesOpen = isDetailPanelOpen(detailPanelOpen, booking.id, "customerNotes");
+                    const pricingAddonsOpen = isDetailPanelOpen(detailPanelOpen, booking.id, "pricingAddons");
+                    const internalNotesOpen = isDetailPanelOpen(detailPanelOpen, booking.id, "internalNotes");
 
                     return (
                       <div
@@ -1159,10 +1167,10 @@ export function AdminPage({ adminUser }) {
                                       <div className="mt-1 text-xs text-slate-500">{getNoteSummary(booking.details, "Customer notes")}</div>
                                     </div>
                                     <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-                                      {detailPanelOpen[booking.id]?.customerNotes ? "Hide" : "View"}
+                                      {customerNotesOpen ? "Hide" : "View"}
                                     </span>
                                   </button>
-                                  {detailPanelOpen[booking.id]?.customerNotes ? (
+                                  {customerNotesOpen ? (
                                     <div className="mt-3 text-sm leading-7 text-slate-700">
                                       {booking.details || "No customer notes added."}
                                     </div>
@@ -1214,10 +1222,10 @@ export function AdminPage({ adminUser }) {
                                       </div>
                                     </div>
                                     <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-                                      {detailPanelOpen[booking.id]?.pricingAddons ? "Hide" : "View"}
+                                      {pricingAddonsOpen ? "Hide" : "View"}
                                     </span>
                                   </button>
-                                  {detailPanelOpen[booking.id]?.pricingAddons ? (
+                                  {pricingAddonsOpen ? (
                                     <div className="mt-3 flex flex-wrap gap-2">
                                       {booking.selectedAddons?.length ? (
                                         booking.selectedAddons.map((addon) => (
@@ -1431,10 +1439,10 @@ export function AdminPage({ adminUser }) {
                                   </div>
                                 </div>
                                 <span className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-                                  {detailPanelOpen[booking.id]?.internalNotes ? "Hide" : "View"}
+                                  {internalNotesOpen ? "Hide" : "View"}
                                 </span>
                               </button>
-                              {detailPanelOpen[booking.id]?.internalNotes ? (
+                              {internalNotesOpen ? (
                                 <textarea
                                   rows={4}
                                   value={internalNotesDraft[booking.id] ?? ""}
