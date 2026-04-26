@@ -8,7 +8,7 @@ diversecleaningservice is a modern cleaning service booking platform with a cust
 - Backend: Node.js, Express
 - Database: PostgreSQL schema included in `database/schema.sql`
 - Auth: JWT-ready backend structure
-- Payments: Stripe-ready payment model
+- Payments: Stripe
 
 ## Project Structure
 
